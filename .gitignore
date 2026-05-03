@@ -1,6 +1,30 @@
+# 依赖
 node_modules/
+
+# 数据库
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# 环境变量 / 密钥
+.env
+.env.*
+*.key
+*.pem
+*.p12
+
+# 日志
 logs/
-cloudflared/
-web-projects/
-start.bat
 *.log
+
+# 部署相关
+cloudflared/
+start.bat
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Claude 内部
+.claude/
