@@ -1,49 +1,49 @@
-# ISLA LABS
+# Cloud Server
 
-AI 生成的 Web 作品集，完全由 Claude Code CLI 编写。
+AI 生成的 Web 作品集。
 
-## 项目列表
+## 功能
 
-| 项目 | 说明 | 技术 |
-|------|------|------|
-| [聊天室](chat/) | 实时多人聊天 | Socket.IO |
-| [俄罗斯方块对战](tetris/) | 1v1 实时对战 | Socket.IO、SRS |
-| [共享白板](whiteboard/) | 协作绘图 | Canvas、Socket.IO |
-| [多人贪吃蛇](snake/) | 服务端权威 | Socket.IO、碰撞检测 |
-| [服务状态面板](status/) | CPU/内存监控 | Node.js、os module |
-| [音乐播放器](music/) | 本地播放、可视化 | Web Audio API、IndexedDB |
+所有功能集成在 [`web-projects/chat-room/`](web-projects/chat-room/) 中，共享同一后端服务。
 
-## 技术栈
-
-- 前端：原生 HTML/CSS/JS
-- 后端：Node.js + Express + Socket.IO
-- 数据库：SQLite (better-sqlite3)
-- 全部代码由 AI 生成
+| 功能 | 说明 |
+|------|------|
+| 实时聊天 | 多人聊天室，支持表情和消息历史 |
+| 俄罗斯方块 | 1v1 实时对战，SRS 旋转系统 |
+| 共享白板 | 协作绘图，5 秒清除冷却 |
+| 多人贪吃蛇 | 服务端权威，Delta 增量更新减少带宽 |
+| 音乐播放器 | 本地文件播放、频谱可视化 |
 
 ## 快速开始
 
 ```bash
 cd web-projects/chat-room
 npm install
-npm start
+node server.js
 ```
 
-## 环境变量
+服务默认运行在 `http://localhost:3000`。
 
-复制 `.env.example` 为 `.env`，填入 Cloudflare Tunnel Token：
+## 环境变量（可选）
+
+如需通过 Cloudflare Tunnel 公开部署，复制 `.env.example` 为 `.env` 并填入 Token：
 
 ```bash
 cp .env.example .env
-# 编辑 .env 填入 CLOUDFLARED_TOKEN
+# 编辑 .env，填入 CLOUDFLARED_TOKEN
 ```
 
-## 数据说明
+不配置则仅本地可访问。
 
-- 账号数据：持久化到 SQLite (`data/app.db`)
-- 聊天记录：内存存储，重启丢失
-- 白板笔画：内存存储，重启丢失
-- 游戏状态：内存存储，重启丢失
+## 数据存储
 
-## 开始时间
+| 数据 | 存储方式 | 重启后 |
+|------|----------|--------|
+| 账号系统 | SQLite 文件 (`data/app.db`) | 保留 |
+| 聊天记录 | 内存 | 清空 |
+| 白板笔画 | 内存 | 清空 |
+| 游戏状态 | 内存 | 清空 |
 
-2026.04.29
+## 许可
+
+代码由 MiMo v2.5 Pro、DeepSeek V4 Pro 及 Claude Code CLI 生成。
