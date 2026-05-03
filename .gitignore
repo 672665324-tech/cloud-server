@@ -10,6 +10,7 @@ data/
 # 环境变量 / 密钥
 .env
 .env.*
+!.env.example
 *.key
 *.pem
 *.p12

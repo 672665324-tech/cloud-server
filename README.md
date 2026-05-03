@@ -17,7 +17,32 @@ AI 生成的 Web 作品集，完全由 Claude Code CLI 编写。
 
 - 前端：原生 HTML/CSS/JS
 - 后端：Node.js + Express + Socket.IO
+- 数据库：SQLite (better-sqlite3)
 - 全部代码由 AI 生成
+
+## 快速开始
+
+```bash
+cd web-projects/chat-room
+npm install
+npm start
+```
+
+## 环境变量
+
+复制 `.env.example` 为 `.env`，填入 Cloudflare Tunnel Token：
+
+```bash
+cp .env.example .env
+# 编辑 .env 填入 CLOUDFLARED_TOKEN
+```
+
+## 数据说明
+
+- 账号数据：持久化到 SQLite (`data/app.db`)
+- 聊天记录：内存存储，重启丢失
+- 白板笔画：内存存储，重启丢失
+- 游戏状态：内存存储，重启丢失
 
 ## 开始时间
 
