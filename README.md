@@ -4,7 +4,7 @@ AI 生成的 Web 作品集。
 
 ## 功能
 
-所有功能集成在 [`web-projects/`](web-projects/) 中，共享同一后端服务。
+扁平结构，所有项目共享同一后端服务。
 
 | # | 项目 | URL | 说明 |
 |---|------|-----|------|
@@ -19,7 +19,6 @@ AI 生成的 Web 作品集。
 ## 快速开始
 
 ```bash
-cd web-projects
 npm install
 node server.js
 ```
