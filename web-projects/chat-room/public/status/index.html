@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>服务状态 — ISLA LABS</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace;
+      background: #0e1a2b;
+      color: #d8e4f0;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: url('/bg.png') center center / auto 100% no-repeat;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: rgba(8, 16, 30, 0.75);
+    }
+
+    .container { max-width: 1000px; margin: 0 auto; padding: 30px 20px; }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 0 30px;
+      border-bottom: 1px solid rgba(120,180,230,0.1);
+      margin-bottom: 30px;
+    }
+    header h1 { font-size: 1.6em; font-weight: 700; letter-spacing: 3px; color: #c8e4f8; }
+    header .live {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85em;
+      color: #6bba8a;
+    }
+    header .live .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #6bba8a;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .section-title {
+      font-size: 0.75em;
+      color: #5a7a9a;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin: 30px 0 14px;
+    }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+    .card {
+      background: rgba(14,28,48,0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(120,180,230,0.1);
+      border-radius: 14px;
+      padding: 20px 22px;
+    }
+    .card .label {
+      font-size: 0.75em;
+      color: #5a7a9a;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .card .value {
+      font-size: 1.8em;
+      font-weight: 700;
+      color: #c8e4f8;
+    }
+    .card .sub {
+      font-size: 0.8em;
+      color: #5a7a9a;
+      margin-top: 4px;
+    }
+
+    /* 进度条 */
+    .bar-wrap {
+      height: 8px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 4px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.6s ease, background 0.6s ease;
+    }
+    .bar-fill.low { background: #4ecca3; }
+    .bar-fill.mid { background: #f0a000; }
+    .bar-fill.high { background: #e94560; }
+
+    /* 服务卡片 */
+    .svc-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      background: rgba(14,28,48,0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(120,180,230,0.08);
+    }
+    .svc-card .icon {
+      font-size: 2em;
+      width: 50px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .svc-card .info { flex: 1; }
+    .svc-card .info .name { font-size: 0.95em; color: #c8dae8; font-weight: 600; }
+    .svc-card .info .stats { font-size: 0.78em; color: #6a8aaa; margin-top: 2px; }
+    .svc-card .badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.7em;
+      font-weight: 700;
+      background: rgba(78,204,163,0.12);
+      color: #4ecca3;
+    }
+
+    /* 历史趋势迷你图 */
+    .sparkline {
+      display: flex;
+      gap: 2px;
+      align-items: flex-end;
+      height: 30px;
+      margin-top: 8px;
+    }
+    .sparkline .bar {
+      flex: 1;
+      background: rgba(124,184,232,0.4);
+      border-radius: 1px 1px 0 0;
+      min-height: 2px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 40px;
+      color: #4a6a8a;
+      font-size: 0.8em;
+      margin-top: 40px;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+
+    @media (max-width: 768px) {
+      .container { padding: 16px 12px; }
+      header { align-items: flex-start; gap: 10px; flex-direction: column; }
+      header h1 { font-size: 1.3em; }
+      .grid { grid-template-columns: 1fr; gap: 10px; }
+      .card { padding: 14px 16px; }
+      .card .value { font-size: 1.2em; }
+      .svc-card { padding: 12px; gap: 10px; }
+      .svc-card .icon { width: 36px; font-size: 1.5em; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>ISLA LABS 服务状态</h1>
+    <div class="live"><span class="dot"></span><span id="refresh-text">实时</span></div>
+  </header>
+
+  <!-- 系统资源 -->
+  <div class="section-title">系统资源</div>
+  <div class="grid" id="sys-grid">
+    <div class="card">
+      <div class="label">CPU</div>
+      <div class="value" id="cpu-val">—</div>
+      <div class="sub" id="cpu-sub"></div>
+      <div class="bar-wrap"><div class="bar-fill" id="cpu-bar"></div></div>
+    </div>
+    <div class="card">
+      <div class="label">内存</div>
+      <div class="value" id="mem-val">—</div>
+      <div class="sub" id="mem-sub"></div>
+      <div class="bar-wrap"><div class="bar-fill" id="mem-bar"></div></div>
+    </div>
+    <div class="card">
+      <div class="label">系统运行时间</div>
+      <div class="value" id="os-uptime">—</div>
+    </div>
+  </div>
+
+  <!-- Node 进程 -->
+  <div class="section-title">Node 进程</div>
+  <div class="grid" id="proc-grid">
+    <div class="card">
+      <div class="label">进程运行时间</div>
+      <div class="value" id="proc-uptime">—</div>
+    </div>
+    <div class="card">
+      <div class="label">堆内存 / RSS</div>
+      <div class="value" id="heap">—</div>
+      <div class="sub" id="heap-sub"></div>
+    </div>
+    <div class="card">
+      <div class="label">Node 版本</div>
+      <div class="value" id="node-ver">—</div>
+    </div>
+  </div>
+
+  <!-- CPU 历史迷你图 -->
+  <div class="section-title">CPU 历史（最近 30 次采样）</div>
+  <div class="sparkline" id="cpu-spark"></div>
+
+  <!-- 服务状态 -->
+  <div class="section-title">服务</div>
+  <div style="display:flex;flex-direction:column;gap:10px" id="svc-list">
+    <div class="svc-card">
+      <div class="icon">&#128172;</div>
+      <div class="info"><div class="name">聊天室</div><div class="stats">— 人在线</div></div>
+      <div class="badge">—</div>
+    </div>
+    <div class="svc-card">
+      <div class="icon">&#127922;</div>
+      <div class="info"><div class="name">俄罗斯方块</div><div class="stats">— 人在线，— 个房间</div></div>
+      <div class="badge">—</div>
+    </div>
+    <div class="svc-card">
+      <div class="icon">&#127912;</div>
+      <div class="info"><div class="name">共享白板</div><div class="stats">— 人在线，— 笔画</div></div>
+      <div class="badge">—</div>
+    </div>
+    <div class="svc-card">
+      <div class="icon">&#128013;</div>
+      <div class="info"><div class="name">贪吃蛇</div><div class="stats">— 人在线，— 条蛇</div></div>
+      <div class="badge">—</div>
+    </div>
+  </div>
+
+  <footer>&copy; 2026 ISLA LABS &middot; Status Dashboard</footer>
+</div>
+
+<script>
+(function(){
+  const cpuHistory = [];
+
+  function barClass(pct) {
+    if (pct < 50) return 'low';
+    if (pct < 80) return 'mid';
+    return 'high';
+  }
+
+  function fmtUptime(sec) {
+    if (!sec || sec < 0) return '—';
+    const d = Math.floor(sec / 86400);
+    const h = Math.floor((sec % 86400) / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const parts = [];
+    if (d > 0) parts.push(d + 'd');
+    if (h > 0) parts.push(h + 'h');
+    if (m > 0) parts.push(m + 'm');
+    return parts.join(' ') || '<1m';
+  }
+
+  async function refresh() {
+    try {
+      const r = await fetch('/api/status', { cache: 'no-store' });
+      const d = await r.json();
+
+      // System
+      document.getElementById('cpu-val').textContent = d.system.cpuUsage + '%';
+      document.getElementById('cpu-sub').textContent = d.system.cpuCores + ' 核心';
+      const cpuBar = document.getElementById('cpu-bar');
+      cpuBar.style.width = d.system.cpuUsage + '%';
+      cpuBar.className = 'bar-fill ' + barClass(d.system.cpuUsage);
+
+      document.getElementById('mem-val').textContent = d.system.memUsage + '%';
+      document.getElementById('mem-sub').textContent = '共 ' + d.system.totalMem;
+      const memBar = document.getElementById('mem-bar');
+      memBar.style.width = d.system.memUsage + '%';
+      memBar.className = 'bar-fill ' + barClass(d.system.memUsage);
+
+      document.getElementById('os-uptime').textContent = fmtUptime(d.system.osUptime);
+
+      // Process
+      document.getElementById('proc-uptime').textContent = fmtUptime(d.process.uptime);
+      document.getElementById('heap').textContent = d.process.heapMB + ' MB';
+      document.getElementById('heap-sub').textContent = 'RSS ' + d.process.rssMB + ' MB / 堆上限 ' + d.process.heapTotalMB + ' MB';
+      document.getElementById('node-ver').textContent = d.process.nodeVersion;
+
+      // Sparkline
+      cpuHistory.push(d.system.cpuUsage);
+      if (cpuHistory.length > 30) cpuHistory.shift();
+      const spark = document.getElementById('cpu-spark');
+      spark.innerHTML = '';
+      const max = Math.max(...cpuHistory, 100);
+      for (const v of cpuHistory) {
+        const el = document.createElement('div');
+        el.className = 'bar';
+        el.style.height = Math.max(2, (v / max) * 100) + '%';
+        el.style.background = v < 50 ? 'rgba(78,204,163,0.5)' : v < 80 ? 'rgba(240,160,0,0.5)' : 'rgba(233,69,96,0.5)';
+        spark.appendChild(el);
+      }
+
+      // Services
+      const svcCards = document.querySelectorAll('#svc-list .svc-card');
+      // Chat
+      const chat = d.services.chat;
+      svcCards[0].querySelector('.stats').textContent = chat.online + ' 人在线，' + chat.messages + ' 条消息';
+      svcCards[0].querySelector('.badge').textContent = chat.online > 0 ? '活跃' : '空闲';
+      svcCards[0].querySelector('.badge').style.color = chat.online > 0 ? '#4ecca3' : '#5a7a9a';
+
+      // Tetris
+      const tetris = d.services.tetris;
+      svcCards[1].querySelector('.stats').textContent = tetris.online + ' 人在线，' + tetris.rooms + ' 个房间';
+      svcCards[1].querySelector('.badge').textContent = tetris.gamesActive > 0 ? '对战中' : tetris.online > 0 ? '在线' : '空闲';
+      svcCards[1].querySelector('.badge').style.color = tetris.gamesActive > 0 ? '#e94560' : tetris.online > 0 ? '#4ecca3' : '#5a7a9a';
+
+      // Whiteboard
+      const wb = d.services.whiteboard;
+      svcCards[2].querySelector('.stats').textContent = wb.online + ' 人在线，' + wb.strokes + ' 笔画';
+      svcCards[2].querySelector('.badge').textContent = wb.online > 0 ? '活跃' : '空闲';
+      svcCards[2].querySelector('.badge').style.color = wb.online > 0 ? '#4ecca3' : '#5a7a9a';
+
+      // Snake
+      const sn = d.services.snake;
+      svcCards[3].querySelector('.stats').textContent = sn.online + ' 人在线，' + sn.total + ' 条蛇，' + sn.food + ' 食物';
+      svcCards[3].querySelector('.badge').textContent = sn.online > 0 ? '对战中' : '空闲';
+      svcCards[3].querySelector('.badge').style.color = sn.online > 0 ? '#e94560' : '#5a7a9a';
+
+      document.getElementById('refresh-text').textContent = new Date().toLocaleTimeString('zh-CN');
+      document.querySelector('header .live').style.color = '#6bba8a';
+      document.querySelector('header .live .dot').style.background = '#6bba8a';
+    } catch(e) {
+      document.getElementById('refresh-text').textContent = '连接失败';
+      document.querySelector('header .live').style.color = '#e94560';
+      document.querySelector('header .live .dot').style.background = '#e94560';
+    }
+  }
+
+  refresh();
+  setInterval(refresh, 3000);
+})();
+</script>
+</body>
+</html>

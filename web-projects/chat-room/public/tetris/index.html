@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>俄罗斯方块</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:linear-gradient(135deg,#0a0a1a,#0f1a30 50%,#0a0a1a);color:#c8d8e8;display:flex;flex-direction:column;align-items:center;min-height:100vh;min-height:100dvh;padding:10px;user-select:none;-webkit-user-select:none;overscroll-behavior:none;-webkit-overflow-scrolling:touch}
+h1{color:#7cb8e8;font-size:1.6em;letter-spacing:4px;margin:4px 0}
+a.back{color:#5a84a0;font-size:.8em;text-decoration:none;margin-bottom:6px}
+a.back:hover{color:#7cb8e8}
+
+.screen{display:none;flex-direction:column;align-items:center;width:100%;max-width:820px}
+.screen.on{display:flex}
+
+/* Menu */
+#scr-menu{padding-top:60px;gap:28px}
+#scr-menu h1{font-size:2.6em;margin-bottom:16px}
+.mbtn{width:260px;padding:15px 0;border:2px solid rgba(120,180,230,.25);background:rgba(14,24,44,.9);color:#c8d8e8;border-radius:12px;font-size:1.15em;cursor:pointer;letter-spacing:3px;transition:all .25s}
+.mbtn:hover{background:rgba(30,50,80,.9);border-color:#7cb8e8;transform:translateY(-2px);box-shadow:0 8px 30px rgba(120,180,230,.12)}
+.mbtn.go{border-color:rgba(120,180,230,.5);color:#7cb8e8}
+.mbtn.go:hover{border-color:#7cb8e8;box-shadow:0 8px 30px rgba(120,180,230,.2)}
+
+/* Panels */
+.panel{background:rgba(14,24,44,.9);border:1px solid rgba(120,180,230,.15);border-radius:10px;padding:20px;width:340px;max-width:90vw;display:flex;flex-direction:column;gap:12px;align-items:center}
+.panel h3{color:#7cb8e8;font-size:1em}
+input{padding:9px 14px;border:1px solid rgba(120,180,230,.2);background:rgba(8,16,30,.9);color:#c8d8e8;border-radius:6px;font-size:.95em;outline:none;width:100%;text-align:center}
+input:focus{border-color:#7cb8e8}
+.btn{padding:9px 22px;border:none;border-radius:7px;cursor:pointer;font-weight:bold;font-size:.9em;transition:all .2s;white-space:nowrap;background:linear-gradient(135deg,#3a6a9a,#2a5a8a);color:#d8e8f8}
+.btn:hover{transform:translateY(-1px)}
+.btn.go{background:linear-gradient(135deg,#7cb8e8,#5a9ad8);color:#0a0a1a}
+.btn.ok{background:linear-gradient(135deg,#4ecca3,#3aae8a);color:#0a0a1a}
+.btn.bad{background:linear-gradient(135deg,#e94560,#c03050)}
+.btn.sm{padding:5px 12px;font-size:.78em}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.fr{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap}
+
+.room-list{list-style:none;max-height:250px;overflow-y:auto;width:100%}
+.room-list li{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;margin:3px 0;background:rgba(14,24,44,.8);border-radius:6px;border:1px solid rgba(120,180,230,.1);gap:6px}
+.room-list li .info{flex:1;min-width:0}
+.room-list li .rname{color:#c8d8e8;font-size:.9em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.room-list li .meta{color:#5a84a0;font-size:.75em}
+.room-list::-webkit-scrollbar{width:4px}
+.room-list::-webkit-scrollbar-thumb{background:#7cb8e8;border-radius:2px}
+
+/* Game */
+.arena{display:flex;gap:14px;align-items:flex-start;justify-content:center;flex-wrap:nowrap}
+.side{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.side .lbl{color:#5a84a0;font-size:.7em;letter-spacing:2px}
+canvas{display:block;border:2px solid rgba(120,180,230,.25);border-radius:6px;box-shadow:0 0 30px rgba(120,180,230,.08);image-rendering:pixelated}
+#bc{width:300px;height:600px}
+#hc{width:100px;height:100px}
+#nc{width:100px;height:320px}
+#oc{width:180px;height:360px}
+
+.infobox{background:rgba(14,24,44,.9);border:1px solid rgba(120,180,230,.15);border-radius:8px;padding:9px 14px;text-align:center;min-width:80px}
+.infobox .v{color:#7cb8e8;font-size:1.2em;font-weight:bold}
+.infobox .t{color:#5a84a0;font-size:.68em}
+
+.mid{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:70px}
+.mid .vs{font-size:1.3em;color:#e94560;font-weight:bold}
+.mid .combo{color:#f0a000;font-weight:bold;font-size:.85em;min-height:16px}
+.mid .go{color:#e94560;font-weight:bold;font-size:.85em;min-height:16px}
+.mid .win{color:#4ecca3;font-weight:bold;font-size:.85em}
+.mid .spec{color:#f0a000;font-size:.75em}
+
+/* Game-area wrapper for visual grouping on mobile */
+.game-body{width:100%;max-width:820px;display:flex;flex-direction:column;align-items:center;gap:6px}
+
+.countdown{font-size:5em;font-weight:bold;color:#f0a000;text-shadow:0 0 40px rgba(240,160,0,.5);animation:pop .5s ease-out}
+@keyframes pop{0%{transform:scale(1.8);opacity:0}100%{transform:scale(1);opacity:1}}
+.sbar{text-align:center;margin:4px 0;color:#7cb8e8;font-size:.8em;min-height:18px;line-height:1.5}
+
+/* Board overlays */
+.bw{position:relative}
+.ovl{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);border-radius:6px;z-index:10;flex-direction:column;align-items:center;justify-content:center}
+.ovl.show{display:flex}
+.ovl .tt{font-size:1.3em;font-weight:bold;margin-bottom:6px}
+.ovl .tt.g{color:#4ecca3}
+.ovl .tt.r{color:#e94560}
+.ovl .ss{color:#8aa8c8;font-size:.8em;margin-bottom:12px;text-align:center;line-height:1.5}
+.ovl .btn{margin:3px}
+
+/* DC modal */
+#dc-mod{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:999;align-items:center;justify-content:center}
+#dc-mod.show{display:flex}
+#dc-dlg{background:#0f1a30;border:1px solid rgba(120,180,230,.2);border-radius:12px;padding:24px;max-width:320px;width:90%;text-align:center}
+#dc-dlg h3{color:#e94560;margin-bottom:10px}
+#dc-dlg p{color:#8aa8c8;font-size:.9em;margin-bottom:16px;line-height:1.5}
+#dc-dlg .btn{margin:3px}
+
+/* Touch */
+#tbar{display:flex;justify-content:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.tb{min-width:56px;height:56px;padding:0 12px;border:2px solid rgba(120,180,230,.3);background:rgba(14,24,44,.9);color:#7cb8e8;border-radius:12px;font-size:1.2em;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.tb:active{background:rgba(120,180,230,.2)}
+.tb.wd{min-width:120px;font-size:.95em;font-weight:bold;color:#e94560;border-color:rgba(233,69,96,.4)}
+.tb.rot{color:#f0a000;border-color:rgba(240,160,0,.4)}
+.inst-pc{color:#4a6a8a;margin-top:5px;font-size:.72em;text-align:center}
+.inst-mob{display:none;color:#6a9a6a;margin-top:5px;font-size:.72em;text-align:center;line-height:1.6}
+/* on narrow screens, hide PC instructions */
+/* Tablet: shrink side panels, keep horizontal arena */
+@media(max-width:750px){
+  .inst-pc{display:none}.inst-mob{display:block}
+  .arena{gap:6px}#bc{width:220px;height:440px}#oc{width:130px;height:260px}#hc{width:72px;height:72px}#nc{width:72px;height:240px}
+  .side{min-width:0}.mid{min-width:48px;font-size:.9em}
+  .tb{min-width:48px;height:48px;font-size:1em}.tb.wd{min-width:90px;font-size:.8em}
+}
+/* Phone: side-by-side boards, ready button in top bar, touch at bottom */
+@media(max-width:500px){
+  body{padding:2px;min-height:100dvh}
+  h1{font-size:1.1em;margin:1px 0;letter-spacing:2px}
+  a.back{font-size:.7em;margin-bottom:1px}
+  #scr-game{padding:0;overflow-y:auto}
+  .sbar{font-size:.65em;line-height:1.2;margin:1px 0}
+  .game-body{gap:3px}
+  /* arena: side-by-side boards */
+  .arena{flex-direction:row;align-items:flex-start;justify-content:center;gap:3px;flex-wrap:nowrap}
+  /* my board */
+  #bc{width:135px;height:270px}
+  /* opponent board */
+  #oc{width:115px;height:230px}
+  /* hold / next: micro */
+  #hc{width:28px;height:28px}#nc{width:28px;height:28px}
+  /* side panels: vertical, super compact */
+  .side{flex-direction:column;gap:2px;min-width:0;justify-content:center}
+  .side .lbl{display:none}
+  /* score boxes */
+  .infobox{padding:1px 3px;min-width:0}.infobox .v{font-size:.7em}.infobox .t{font-size:.5em}
+  /* SP info: compact vertical */
+  #sp-info{display:flex;flex-direction:column;gap:1px;align-items:center}
+  /* battle info: compact vertical */
+  #bt-info{display:flex;flex-direction:column;gap:1px;align-items:center}
+  /* middle column: VS + ready/countdown between boards */
+  .mid{flex-direction:column;gap:2px;min-width:0;font-size:.6em;align-items:center;justify-content:center}
+  .mid .vs{font-size:.7em}
+  .mid .combo,.mid .go,.mid .win{font-size:.6em;min-height:0}
+  .countdown{font-size:1.6em}
+  /* ready button prominent in middle */
+  #btn-ready,#btn-unready{font-size:.65em;padding:3px 8px}
+  /* touch bar at bottom */
+  #tbar{gap:3px;padding:3px 5px;background:rgba(8,14,24,.9);border-radius:6px;border:1px solid rgba(120,180,230,.1)}
+  .tb{min-width:42px;height:44px;font-size:.9em;border-radius:8px;padding:0 6px}
+  .tb.wd{min-width:74px;font-size:.72em;height:44px}
+  /* hide labels */
+  #left-pn .lbl{display:none}#right-pn .lbl{display:none}
+  .inst-mob{font-size:.6em;margin-top:1px;line-height:1.2}
+  .btn.sm{padding:2px 6px;font-size:.65em}
+  .fr{gap:3px}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== SCREEN: MENU ===== -->
+<div id="scr-menu" class="screen on">
+  <h1>TETRIS</h1>
+  <button class="mbtn go" onclick="startSP()">单人模式</button>
+  <button class="mbtn" onclick="showName()">在线对战</button>
+  <a class="back" href="/" style="margin-top:20px">&larr; 返回主页</a>
+</div>
+
+<!-- ===== SCREEN: NAME ===== -->
+<div id="scr-name" class="screen">
+  <div class="panel" style="margin-top:50px">
+    <h3>输入昵称</h3>
+    <input id="ni" placeholder="你的昵称" maxlength="12" autofocus>
+    <div class="fr">
+      <button class="btn go" onclick="enterLobby()">进入大厅</button>
+      <button class="btn sm" onclick="toMenu()">返回</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: LOBBY ===== -->
+<div id="scr-lobby" class="screen">
+  <div class="panel">
+    <div class="fr" style="width:100%;justify-content:space-between">
+      <span style="font-size:.85em">👤 <span id="lb-name"></span></span>
+      <button class="btn sm" onclick="showName()">改名</button>
+      <button class="btn sm" onclick="toMenu()">返回菜单</button>
+    </div>
+    <input id="ri" placeholder="房间名称" maxlength="20">
+    <div class="fr">
+      <button class="btn go" onclick="createRoom()">创建房间</button>
+      <button class="btn" onclick="refreshRooms()">刷新</button>
+    </div>
+    <div style="color:#5a84a0;font-size:.76em">或加入已有房间：</div>
+    <ul class="room-list" id="rl"></ul>
+    <div style="color:#4a6a8a;font-size:.7em">创建后将链接发给朋友；房满可旁观</div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: GAME ===== -->
+<div id="scr-game" class="screen">
+  <div class="sbar" id="sb"></div>
+  <div class="fr" style="width:100%;margin-bottom:3px;gap:10px">
+    <button class="btn sm bad" id="btn-leave" onclick="leaveGame()" style="display:none">退出房间</button>
+    <button class="btn sm" onclick="toMenu()">返回菜单</button>
+    <span id="room-tag" style="color:#5a84a0;font-size:.7em"></span>
+  </div>
+
+  <div class="game-body">
+    <div class="arena">
+      <!-- LEFT: Hold -->
+      <div class="side" id="left-pn">
+        <span class="lbl">暂存</span>
+        <canvas id="hc" width="100" height="100"></canvas>
+      </div>
+
+      <!-- CENTER: Board -->
+      <div class="bw">
+        <canvas id="bc" width="300" height="600"></canvas>
+        <div class="ovl" id="pause-ov"><div class="tt g">暂停</div><div class="ss">按 Esc 继续</div></div>
+        <div class="ovl" id="go-ov"><div class="tt r">游戏结束</div><div class="ss" id="go-msg"></div><button class="btn go" id="go-restart">再来一局</button></div>
+      </div>
+
+      <!-- BATTLE MIDDLE -->
+      <div class="mid" id="mid-pn" style="display:none">
+        <div class="vs">VS</div>
+        <div class="combo" id="combo-txt"></div>
+        <div class="go" id="go-txt"></div>
+        <div class="win" id="win-txt"></div>
+        <div id="cd-ctn"></div>
+        <span class="spec" id="spec-badge" style="display:none">👁 观战</span>
+        <button class="btn ok" id="btn-ready" onclick="toggleReady()" style="display:none">准备</button>
+        <button class="btn bad sm" id="btn-unready" onclick="cancelReady()" style="display:none">取消准备</button>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="side" id="right-pn">
+        <!-- SP: next + score -->
+        <div id="sp-info">
+          <span class="lbl">预览</span>
+          <canvas id="nc" width="100" height="320"></canvas>
+          <div class="infobox"><div class="v" id="sp-sc">0</div><div class="t">分数</div></div>
+          <div class="infobox"><div class="v" id="sp-lv">1</div><div class="t">等级</div></div>
+          <div class="infobox"><div class="v" id="sp-ln">0</div><div class="t">消行</div></div>
+        </div>
+        <!-- Battle: opponent -->
+        <div id="bt-info" style="display:none">
+          <span class="lbl" id="op-lbl">对手</span>
+          <canvas id="oc" width="180" height="360"></canvas>
+          <div class="infobox"><div class="v" id="bt-my-sc">0</div><div class="t">我的分数</div></div>
+          <div class="infobox"><div class="v" id="bt-op-sc">0</div><div class="t">对手分数</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DC modal -->
+    <div id="dc-mod"><div id="dc-dlg">
+      <h3>对手已断开</h3><p id="dc-msg"></p>
+      <button class="btn bad" onclick="dcAct('leave')">我也离开</button>
+      <button class="btn" onclick="dcAct('wait')">等待重连</button>
+      <button class="btn go" onclick="dcAct('newgame')">新开一局</button>
+    </div></div>
+
+    <!-- Touch controls -->
+    <div id="tbar">
+      <button class="tb" data-a="left"   ontouchstart="">◀</button>
+      <button class="tb rot" data-a="rotate" ontouchstart="">↻ 旋转</button>
+      <button class="tb" data-a="down"   ontouchstart="">▼</button>
+      <button class="tb" data-a="right"  ontouchstart="">▶</button>
+      <button class="tb wd" data-a="drop"  ontouchstart="">⬇ 硬降</button>
+      <button class="tb" data-a="hold"  ontouchstart="">暂存</button>
+    </div>
+    <div class="inst-pc">← → 移动 &nbsp; ↑ 旋转 &nbsp; ↓ 软降 &nbsp; 空格 硬降 &nbsp; C 暂存 &nbsp; Z 逆旋 &nbsp; Esc 暂停</div>
+    <div class="inst-mob">◀▶ 移动 &nbsp; ↻ 旋转 &nbsp; ▼ 软降 &nbsp; ⬇ 硬降 &nbsp; 暂存</div>
+  </div>
+</div>
+
+<div id="off-bar" style="display:none;position:fixed;top:0;left:0;right:0;background:#e94560;color:#fff;text-align:center;padding:6px;z-index:9999;font-size:.82em;font-weight:bold">⚠ 网络已断开，正在重连…</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ==================== CONSTANTS ====================
+const COLS=10,ROWS=20,CELL=30;
+const TYPES=[
+  ['I',[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],'#00e5ff','#80f0ff','#009faf'],
+  ['O',[[1,1],[1,1]],                            '#ffe030','#fff080','#bfa800'],
+  ['T',[[0,1,0],[1,1,1],[0,0,0]],                '#c840f0','#e080ff','#8000c0'],
+  ['S',[[0,1,1],[1,1,0],[0,0,0]],                '#60f030','#a0ff70','#30a000'],
+  ['Z',[[1,1,0],[0,1,1],[0,0,0]],                '#f03040','#ff7080','#b00020'],
+  ['J',[[1,0,0],[1,1,1],[0,0,0]],                '#3060f0','#7090ff','#0030b0'],
+  ['L',[[0,0,1],[1,1,1],[0,0,0]],                '#f09020','#ffb060','#b06000'],
+];
+const KICK_JLSZT={
+  '0>1':[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],'1>0':[[0,0],[1,0],[1,1],[0,-2],[1,-2]],
+  '1>2':[[0,0],[1,0],[1,1],[0,-2],[1,-2]],'2>1':[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],
+  '2>3':[[0,0],[1,0],[1,-1],[0,2],[1,2]],'3>2':[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],
+  '3>0':[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],'0>3':[[0,0],[1,0],[1,-1],[0,2],[1,2]],
+};
+const KICK_I={
+  '0>1':[[0,0],[-2,0],[1,0],[-2,-1],[1,2]],'1>0':[[0,0],[2,0],[-1,0],[2,1],[-1,-2]],
+  '1>2':[[0,0],[-1,0],[2,0],[-1,-2],[2,1]],'2>1':[[0,0],[1,0],[-2,0],[1,2],[-2,-1]],
+  '2>3':[[0,0],[2,0],[-1,0],[2,1],[-1,-2]],'3>2':[[0,0],[-2,0],[1,0],[-2,-1],[1,2]],
+  '3>0':[[0,0],[1,0],[-2,0],[1,-2],[-2,1]],'0>3':[[0,0],[-1,0],[2,0],[-1,-2],[2,1]],
+};
+
+// ==================== DOM REFS ====================
+const $=id=>document.getElementById(id);
+const bc=$('bc'),hc=$('hc'),nc=$('nc'),oc=$('oc');
+const bctx=bc.getContext('2d'),hctx=hc.getContext('2d'),nctx=nc.getContext('2d'),octx=oc.getContext('2d');
+
+// ==================== GAME ENGINE ====================
+class Tetris {
+  constructor(){
+    this.b=null;this.p=null;this.hold=null;this.holdUsed=false;this.q=[];this.bag=[];
+    this.score=0;this.lv=1;this.lines=0;this.combo=-1;this.b2b=false;this.spun=false;
+    this.dt=0;this.lt=0;this.lr=0;this.over=false;
+    this._attackCb=null;
+    this.init();
+  }
+  init(){
+    this.b=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+    this.q=[];this.bag=[];this.hold=null;this.holdUsed=false;
+    this.score=0;this.lv=1;this.lines=0;this.combo=-1;this.b2b=false;this.spun=false;
+    this.dt=0;this.lt=0;this.lr=0;this.over=false;
+    this._fill();this.spawn();
+  }
+  _fill(){while(this.q.length<7){if(!this.bag.length)this.bag=this._shuffle([0,1,2,3,4,5,6]);this.q.push(this.bag.pop())}}
+  _shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+  _deq(){this._fill();return this.q.shift()}
+  _peek(n){this._fill();return this.q[n]}
+  spawn(){
+    const t=this._deq(),d=TYPES[t],s=d[1].map(r=>[...r]);
+    this.p={type:t,shape:s,rot:0,x:Math.floor((COLS-s[0].length)/2),y:-1};
+    if(this._hit(s,this.p.x,-1))this.over=true;
+  }
+  _hit(sh,px,py){
+    for(let r=0;r<sh.length;r++)for(let c=0;c<sh[r].length;c++)if(sh[r][c]){const nr=py+r,nc=px+c;if(nc<0||nc>=COLS||nr>=ROWS)return true;if(nr>=0&&this.b[nr][nc])return true}
+    return false;
+  }
+  _onGround(){return this._hit(this.p.shape,this.p.x,this.p.y+1)}
+  _dropInterval(){return Math.max(33,Math.pow(0.8-(this.lv-1)*0.007,this.lv-1)*1000)}
+
+  tick(dt){
+    if(this.over||!this.p)return;
+    this.dt+=dt;const iv=this._dropInterval();
+    while(this.dt>=iv){this.dt-=iv;this._move(0,1)}
+    if(this._onGround()){this.lt+=dt;if(this.lt>=500)this.lock()}
+    else this.lt=0;
+  }
+  _move(dx,dy){
+    if(!this.p||this.over)return false;
+    if(!this._hit(this.p.shape,this.p.x+dx,this.p.y+dy)){this.p.x+=dx;this.p.y+=dy;if(dy===0&&this.lt>0&&this.lr<15){this.lt=0;this.lr++}return true}
+    return false;
+  }
+  moveL(){this._move(-1,0)}
+  moveR(){this._move(1,0)}
+  softDrop(){if(this._move(0,1)){this.score+=1;this.dt=0}}
+  hardDrop(){if(!this.p||this.over)return;let d=0;while(!this._hit(this.p.shape,this.p.x,this.p.y+d+1))d++;this.p.y+=d;this.score+=d*2;this.lock()}
+  rotate(dir){
+    if(!this.p||this.over)return;
+    const f=this.p.rot,t=dir===1?(f+1)%4:(f+3)%4;
+    const ns=dir===1?this._cw(this.p.shape):this._ccw(this.p.shape);
+    const kicks=this.p.type===0?KICK_I[`${f}>${t}`]:KICK_JLSZT[`${f}>${t}`];
+    if(!kicks)return;
+    for(const[dx,dy] of kicks)if(!this._hit(ns,this.p.x+dx,this.p.y+dy)){
+      this.p.shape=ns;this.p.rot=t;this.p.x+=dx;this.p.y+=dy;
+      if(this.lt>0&&this.lr<15){this.lt=0;this.lr++}
+      if(this.p.type===2)this.spun=true;
+      return;
+    }
+  }
+  _cw(s){return s[0].map((_,i)=>s.map(r=>r[i]).reverse())}
+  _ccw(s){return s[0].map((_,i)=>s.map(r=>r[i])).reverse()}
+  doHold(){
+    if(this.holdUsed||!this.p||this.over)return;
+    this.holdUsed=true;
+    if(this.hold===null){this.hold=this.p.type;this.spawn()}
+    else{const t=this.p.type;this.p=null;this._fill();const d=TYPES[this.hold],s=d[1].map(r=>[...r]);this.p={type:this.hold,shape:s,rot:0,x:Math.floor((COLS-s[0].length)/2),y:-1};this.hold=t;if(this._hit(s,this.p.x,this.p.y))this.over=true}
+    this.lt=0;this.lr=0;this.spun=false;
+  }
+  _tCorners(){
+    const cx=this.p.x+1,cy=this.p.y+1;let f=0;
+    for(const[c,r]of[[cx-1,cy-1],[cx+1,cy-1],[cx-1,cy+1],[cx+1,cy+1]]){if(c<0||c>=COLS||r<0||r>=ROWS){f++;continue}if(this.b[r]&&this.b[r][c])f++}
+    return f;
+  }
+  lock(){
+    if(!this.p)return;
+    const t=TYPES[this.p.type];
+    for(let r=0;r<this.p.shape.length;r++)for(let c=0;c<this.p.shape[r].length;c++)if(this.p.shape[r][c]){const nr=this.p.y+r,nc=this.p.x+c;if(nr<0){this.over=true;return}this.b[nr][nc]=[t[2],t[3],t[4]]}
+    this._clearLines();this.holdUsed=false;this.lr=0;this.lt=0;this.spawn();
+  }
+  _clearLines(){
+    let cl=0;
+    const sp=this.spun&&this.p&&this.p.type===2&&this._tCorners()>=3;
+    for(let r=ROWS-1;r>=0;r--){if(this.b[r].every(c=>c)){this.b.splice(r,1);this.b.unshift(Array(COLS).fill(0));cl++;r++}}
+    if(cl>0){
+      this.combo++;
+      let pts=0;const wb=this.b2b;
+      if(sp){pts=[0,800,1200,1600][cl]||0;this.b2b=true}
+      else if(cl===4){pts=800;this.b2b=true}
+      else{pts=[0,100,300,500][cl]||0;this.b2b=false}
+      if(wb&&(sp||cl===4))pts=Math.floor(pts*1.5);
+      pts*=this.lv;pts+=this.combo*50*this.lv;
+      this.score+=pts;this.lines+=cl;
+      const nl=Math.floor(this.lines/10)+1;if(nl>this.lv)this.lv=nl;
+      if(this._attackCb){
+        let atk=0;
+        if(sp){atk=[0,2,4,6][cl]||0}
+        else if(cl===4){atk=4}
+        else if(cl>=2){atk=cl-1}
+        if(atk>0)this._attackCb(atk);
+      }
+    }else this.combo=-1;
+    this.spun=false;
+  }
+  addGarbage(rows){
+    for(let i=0;i<rows.length;i++){this.b.push(rows[i].map(v=>v?['#555','#888','#333']:0));this.b.shift()}
+    if(this.p&&this._hit(this.p.shape,this.p.x,this.p.y))this.p.y--;
+    if(this.p&&this._hit(this.p.shape,this.p.x,this.p.y))this.over=true;
+  }
+  setAttackCallback(cb){this._attackCb=cb}
+  setState(st){
+    this.b=st.board||Array.from({length:ROWS},()=>Array(COLS).fill(0));
+    this.score=st.score||0;this.lines=st.lines||0;
+    this.lv=Math.floor(this.lines/10)+1;
+  }
+}
+
+// ==================== GLOBAL STATE ====================
+let mode='menu';     // menu | single | battle
+let gs='idle';       // idle | playing | paused | over
+let game,myPn,rafId,tickTimer=null;
+let oppB=null,oppSc=0,oppLn=0;
+let sock=null,bName='',roomId=null;
+let hbIv=null,lastAck=0,dcIv=null;
+let rejoining=false;
+
+function esc(s){const d=document.createElement('span');d.textContent=s;return d.innerHTML}
+
+// ==================== SCREENS ====================
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));$(id).classList.add('on')}
+function toMenu(){
+  stopLoop();
+  if(mode==='battle'&&sock){sock.emit('leave-room');roomId=null;try{sessionStorage.removeItem('tt_r')}catch(e){}}
+  // stop heartbeat when leaving battle
+  if(hbIv){clearInterval(hbIv);hbIv=null}
+  if(dcIv){clearInterval(dcIv);dcIv=null}
+  rejoining=false;mode='menu';show('scr-menu');
+}
+function startSP(){
+  mode='single';gs='playing';myPn=1;
+  show('scr-game');
+  $('btn-leave').style.display='none';$('sp-info').style.display='';$('bt-info').style.display='none';
+  $('mid-pn').style.display='none';$('left-pn').style.display='';$('room-tag').textContent='';
+  game=new Tetris();oppB=null;updateUI();drawAll();
+  startLoop();
+}
+
+// ==================== BATTLE UI ====================
+function showName(){
+  mode='battle';show('scr-name');$('ni').focus();
+  const s=sessionStorage.getItem('tt_n');if(s)$('ni').value=s;
+}
+function enterLobby(){
+  const n=$('ni').value.trim();if(!n)return;
+  bName=n;try{sessionStorage.setItem('tt_n',n)}catch(e){}
+  connectSock();show('scr-lobby');$('lb-name').textContent=bName;$('ri').placeholder=bName+'的房间';refreshRooms();
+}
+
+// ==================== SOCKET ====================
+function connectSock(){
+  if(sock&&sock.connected){show('scr-lobby');$('lb-name').textContent=bName;refreshRooms();return}
+  sock=io('/tetris');
+  sock.on('connect',()=>{
+    $('off-bar').style.display='none';
+    sock.emit('set-name',bName);
+  });
+  sock.on('name-ok',(d)=>{bName=d.name;try{sessionStorage.setItem('tt_n',bName)}catch(e){}if(!rejoining&&gs!=='playing'){show('scr-lobby');$('lb-name').textContent=bName;$('ri').placeholder=bName+'的房间';refreshRooms()}});
+  sock.on('room-list',onRoomList);
+  sock.on('room-error',(m)=>alert(m));
+  sock.on('room-state',onRoomState);
+  sock.on('countdown',onCD);
+  sock.on('game-start',onGameStart);
+  sock.on('opponent-state',onOppState);
+  sock.on('incoming-attack',onAttack);
+  sock.on('game-end',onGameEnd);
+  sock.on('player-dc',onPlayerDC);
+  sock.on('player-back',onPlayerBack);
+  sock.on('player-gone',onPlayerGone);
+  sock.on('player-left',()=>{stopLoop();$('go-txt').textContent='对手离开了';$('btn-ready').style.display='block';$('btn-ready').disabled=false;$('btn-ready').textContent='准备'});
+  sock.on('game-resume',onResume);
+  sock.on('rejoin-failed',()=>{rejoining=false;roomId=null;show('scr-lobby');refreshRooms()});
+  sock.on('heartbeat-ack',()=>{lastAck=Date.now()});
+  sock.on('disconnect',()=>{$('off-bar').style.display='block';if(gs==='playing'){stopLoop();$('sb').textContent='⚠ 断开，重连中…'}});
+  sock.io.on('reconnect',()=>{if(roomId&&bName){rejoining=true;sock.emit('rejoin',{name:bName,roomId})}});
+  startHB();
+  const sr=sessionStorage.getItem('tt_r');if(sr&&bName)try{const r=JSON.parse(sr);if(r&&r.id){roomId=r.id;rejoining=true;sock.emit('rejoin',{name:bName,roomId:r.id})}}catch(e){}
+}
+
+function onRoomList(rooms){
+  const l=$('rl');if(!rooms||rooms.length===0){l.innerHTML='<li style="color:#5a84a0;text-align:center;width:100%">暂无房间，创建一个吧</li>';return}
+  l.innerHTML=rooms.map(r=>{const s=r.playing?'🔴 对战中':(r.players+'/2 人'),btn=r.playing?`<button class="btn sm" data-a="spec" data-rid="${esc(r.id)}">观战</button>`:`<button class="btn sm go" data-a="join" data-rid="${esc(r.id)}">${r.players<2?'加入':'观战'}</button>`;return`<li><div class="info"><div class="rname">${esc(r.name)}</div><div class="meta">${s} · ${esc(r.hostName)}${r.spectators?' · 👁'+r.spectators:''}</div></div>${btn}</li>`}).join('');
+  $('rl').onclick=function(e){const b=e.target.closest('[data-rid]');if(!b)return;const rid=b.dataset.rid;if(b.dataset.a==='spec')sock.emit('spectate-room',rid);else sock.emit('join-room',rid)};
+}
+function createRoom(){const n=$('ri').value.trim()||null;sock.emit('create-room',n)}
+function refreshRooms(){sock.emit('list-rooms')}
+
+function onRoomState(d){
+  roomId=d.roomId;try{sessionStorage.setItem('tt_r',JSON.stringify({id:d.roomId}))}catch(e){}
+  show('scr-game');
+  $('sp-info').style.display='none';$('bt-info').style.display='';$('mid-pn').style.display='flex';
+  $('left-pn').style.display='';$('btn-leave').style.display='inline-block';
+  $('room-tag').textContent=`房间: ${esc(d.name)} | ID: ${d.roomId}`;
+  $('sb').innerHTML=d.users.map(u=>{const rd=!d.gameActive&&d.ready.includes(u.id)?' ✅':'';return`<span style="margin:0 5px"><span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:${u.avatar.bg};color:#fff;text-align:center;line-height:18px;font-size:.65em;font-weight:bold;vertical-align:middle;margin-right:2px">${u.avatar.letter}</span>${esc(u.name)}${rd}${u.spectator?' 👁':''}${u.id===d.host?' [房主]':''}</span>`}).join('');
+  const amP=d.users.some(u=>u.id===sock.id&&!u.spectator);
+  const amR=d.ready.includes(sock.id);
+  const pC=d.users.filter(u=>!u.spectator).length;
+  $('btn-ready').style.display='none';$('btn-unready').style.display='none';$('spec-badge').style.display='none';
+  if(!d.gameActive&&amP){
+    $('btn-ready').style.display=amR?'none':'block';$('btn-ready').textContent='准备';$('btn-ready').classList.add('ok');$('btn-ready').classList.remove('bad');
+    $('btn-unready').style.display=amR?'block':'none';
+    if(pC>=2)$('sb').insertAdjacentHTML('beforeend',`<div style="font-size:.78em;color:#4ecca3;margin-top:2px">准备: ${d.ready.length}/${pC}</div>`);
+  }
+  if(!amP&&d.users.some(u=>u.id===sock.id))$('spec-badge').style.display='block';
+  const op=d.users.find(u=>u.id!==sock.id&&!u.spectator);if(op)$('op-lbl').textContent=op.name;
+}
+function toggleReady(){
+  const b=$('btn-ready');
+  if(b.textContent==='准备'){sock.emit('ready');b.textContent='取消';b.classList.remove('ok');b.classList.add('bad')}
+  else{sock.emit('cancel-ready')}
+}
+function cancelReady(){sock.emit('cancel-ready')}
+
+function onCD(n){const c=$('cd-ctn');c.innerHTML=n>0?`<div class="countdown">${n}</div>`:'<div style="color:#4ecca3;font-size:1.2em">开始！</div>';if(n===0)setTimeout(()=>{c.innerHTML=''},800)}
+
+function onGameStart(d){
+  myPn=d.player;
+  $('spec-badge').style.display=myPn===0?'block':'none';
+  $('btn-ready').style.display='none';$('btn-unready').style.display='none';
+  $('go-txt').textContent='';$('win-txt').textContent='';$('dc-mod').classList.remove('show');
+  game=new Tetris();if(myPn===0){game.p=null;gs='idle'}else gs='playing';
+  if(myPn!==0)game.setAttackCallback(n=>sendAttack(n));
+  oppB=Array.from({length:ROWS},()=>Array(COLS).fill(0));oppSc=0;oppLn=0;
+  updateUI();updateBUi();drawAll();
+  if(myPn!==0)startLoop();else{tickTimer=setInterval(drawAll,50);startHB()}
+}
+
+function onOppState(d){
+  if(d.id===sock.id)return;oppB=d.board;oppSc=d.score;oppLn=d.lines;updateBUi();
+}
+function onAttack(rows){game.addGarbage(rows);if(game.over){die();return}if(mode==='battle'&&myPn!==0)sendBoard()}
+function onGameEnd(d){
+  stopLoop();$('win-txt').textContent='胜者: '+esc(d.winnerName||'?');
+  $('go-txt').textContent=d.youWin?'你赢了！':(myPn===0?'':($('go-txt').textContent||''));
+  $('btn-ready').style.display='block';$('btn-ready').textContent='准备';$('btn-ready').classList.add('ok');$('btn-ready').classList.remove('bad');$('btn-ready').disabled=false;
+  drawAll();
+}
+function onPlayerDC(d){if(gs==='playing')stopLoop();$('dc-msg').textContent=`${esc(d.name)} 已断开。等待重连（60秒），或选择：`;$('dc-mod').classList.add('show')}
+function onPlayerBack(d){$('dc-mod').classList.remove('show');$('go-txt').textContent='';$('win-txt').textContent='';$('sb').insertAdjacentHTML('beforeend',`<div>${esc(d.name)} 已重连！</div>`);if(myPn!==0&&gs!=='playing'){gs='playing';startLoop()}}
+function onPlayerGone(d){$('dc-mod').classList.remove('show');stopLoop();$('go-txt').textContent=`${esc(d.name)} 未重连`;$('btn-ready').style.display='block';$('btn-ready').disabled=false}
+function onResume(d){
+  rejoining=false;myPn=d.player;roomId=d.roomId;try{sessionStorage.setItem('tt_r',JSON.stringify({id:d.roomId}))}catch(e){}
+  show('scr-game');$('sp-info').style.display='none';$('bt-info').style.display='';$('mid-pn').style.display='flex';$('btn-leave').style.display='inline-block';
+  $('go-txt').textContent='';$('win-txt').textContent='';$('dc-mod').classList.remove('show');
+  game=new Tetris();game.setAttackCallback(n=>sendAttack(n));game.setState({board:d.board,score:d.score,lines:d.lines});game.spawn();
+  oppB=d.oppBoard||Array.from({length:ROWS},()=>Array(COLS).fill(0));oppSc=d.oppScore||0;oppLn=d.oppLines||0;
+  gs='playing';updateUI();updateBUi();startLoop();$('sb').insertAdjacentHTML('beforeend','<div>已重连！</div>');
+}
+
+function sendBoard(){if(!sock||myPn===0)return;sock.emit('board-update',{board:game.b,score:game.score,lines:game.lines})}
+function sendAttack(n){if(!sock||myPn===0||n<=0)return;sock.emit('send-attack',n)}
+
+function dcAct(a){$('dc-mod').classList.remove('show');if(a==='leave'){stopLoop();sock.emit('leave-room');roomId=null;toMenu()}else if(a==='wait'){$('sb').insertAdjacentHTML('beforeend','<div>等待对手重连…</div>')}else if(a==='newgame'){stopLoop();sock.emit('new-game');$('sb').textContent='等待新对手加入…';$('btn-ready').style.display='block';$('btn-ready').textContent='准备';$('btn-ready').disabled=false;$('go-txt').textContent='';$('win-txt').textContent=''}}
+function leaveGame(){stopLoop();if(sock){sock.emit('leave-room');roomId=null;try{sessionStorage.removeItem('tt_r')}catch(e){}}show('scr-lobby');if(sock)refreshRooms()}
+
+// ==================== HEARTBEAT ====================
+function startHB(){if(hbIv)return;lastAck=Date.now();hbIv=setInterval(()=>{if(sock&&sock.connected)sock.emit('heartbeat')},1000)}
+function startDC(){if(dcIv)return;dcIv=setInterval(()=>{if(mode==='battle'&&gs==='playing'&&lastAck&&Date.now()-lastAck>4000){stopLoop();lastAck=0;$('sb').textContent='⚠ 你已断开，游戏暂停'}},1500)}
+
+// ==================== GAME LOOP ====================
+function startLoop(){
+  gs='playing';if(mode==='battle'){startDC();if(!hbIv)startHB()}
+  loop.last=performance.now();rafId=requestAnimationFrame(loop);
+}
+function stopLoop(){
+  gs='idle';if(rafId){cancelAnimationFrame(rafId);rafId=null}
+  if(tickTimer){clearInterval(tickTimer);tickTimer=null}
+  // keep heartbeat alive for reconnect detection; only clear dcCheck
+  if(dcIv){clearInterval(dcIv);dcIv=null}
+}
+function loop(now){
+  if(gs!=='playing'){rafId=requestAnimationFrame(loop);return}
+  rafId=requestAnimationFrame(loop);
+  const dt=Math.min(now-(loop.last||now),200);loop.last=now;
+  if(game&&game.p){game.tick(dt);
+    if(game.over){die()}else if(mode==='battle'&&myPn!==0)sendBoard()}
+  updateUI();drawAll();
+}
+function die(){
+  gs='over';stopLoop();
+  if(mode==='single'){
+    $('go-msg').textContent=`得分: ${game.score} | 消行: ${game.lines} | 等级: ${game.lv}`;$('go-restart').onclick=restartSP;$('go-ov').classList.add('show');
+  }else if(mode==='battle'&&myPn!==0){sock.emit('game-over');$('go-txt').textContent='你输了'}
+  drawAll();
+}
+
+// ==================== DRAWING ====================
+function drawBlock(ctx,x,y,c,l,d,s){const cx=x*s,cy=y*s;ctx.fillStyle=c;ctx.fillRect(cx+1,cy+1,s-2,s-2);ctx.fillStyle=l;ctx.fillRect(cx+1,cy+1,s-2,3);ctx.fillRect(cx+1,cy+1,3,s-4);ctx.fillStyle=d;ctx.fillRect(cx+1,cy+s-4,s-2,3);ctx.fillRect(cx+s-4,cy+1,3,s-2)}
+function drawBoard(){
+  const cs=CELL;bctx.clearRect(0,0,COLS*cs,ROWS*cs);
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){bctx.fillStyle=(r+c)%2===0?'#0d1625':'#0b1220';bctx.fillRect(c*cs,r*cs,cs,cs);if(game.b[r]&&game.b[r][c])drawBlock(bctx,c,r,game.b[r][c][0],game.b[r][c][1],game.b[r][c][2],cs)}
+  if(!game.p||game.over)return;
+  // ghost
+  let gy=game.p.y;while(!game._hit(game.p.shape,game.p.x,gy+1))gy++;
+  if(gy!==game.p.y){bctx.globalAlpha=.2;const t=TYPES[game.p.type];for(let r=0;r<game.p.shape.length;r++)for(let c=0;c<game.p.shape[r].length;c++)if(game.p.shape[r][c]&&game.p.y+r>=0)drawBlock(bctx,game.p.x+c,gy+r,t[2],t[3],t[4],cs);bctx.globalAlpha=1}
+  const t=TYPES[game.p.type];for(let r=0;r<game.p.shape.length;r++)for(let c=0;c<game.p.shape[r].length;c++)if(game.p.shape[r][c]&&game.p.y+r>=0)drawBlock(bctx,game.p.x+c,game.p.y+r,t[2],t[3],t[4],cs);
+}
+function drawOpp(){
+  if(!oppB)return;const cs=oc.width/COLS;octx.clearRect(0,0,oc.width,oc.height);
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){octx.fillStyle=(r+c)%2===0?'#0d1625':'#0b1220';octx.fillRect(c*cs,r*cs,cs,cs);if(oppB[r]&&oppB[r][c])drawBlock(octx,c,r,oppB[r][c][0],oppB[r][c][1],oppB[r][c][2],cs)}
+}
+function drawSide(ctx,type,w,h,cs){ctx.clearRect(0,0,w,h);ctx.fillStyle='#0d1625';ctx.fillRect(0,0,w,h);if(type==null)return;const t=TYPES[type],sh=t[1],ox=(w-sh[0].length*cs)/2|0,oy=(h-sh.length*cs)/2|0;for(let r=0;r<sh.length;r++)for(let c=0;c<sh[r].length;c++)if(sh[r][c])drawBlock(ctx,ox/cs+c,oy/cs+r,t[2],t[3],t[4],cs)}
+function drawHold(){drawSide(hctx,game.hold,100,100,18)}
+function drawNext(){const cs=18;nctx.clearRect(0,0,100,320);nctx.fillStyle='#0d1625';nctx.fillRect(0,0,100,320);for(let i=0;i<3;i++){const tp=game._peek(i);if(tp===undefined)continue;const t=TYPES[tp],sh=t[1],oy=10+i*105,ox=(100-sh[0].length*cs)/2|0;for(let r=0;r<sh.length;r++)for(let c=0;c<sh[r].length;c++)if(sh[r][c])drawBlock(nctx,ox/cs+c,oy/cs+r,t[2],t[3],t[4],cs)}}
+function drawAll(){drawBoard();if(mode==='battle')drawOpp();drawHold();if(mode==='single')drawNext()}
+
+function updateUI(){$('sp-sc').textContent=game.score;$('sp-lv').textContent=game.lv;$('sp-ln').textContent=game.lines;$('bt-my-sc').textContent=game.score}
+function updateBUi(){$('bt-op-sc').textContent=oppSc}
+
+// ==================== RESTART SP ====================
+function restartSP(){$('go-ov').classList.remove('show');$('pause-ov').classList.remove('show');game=new Tetris();gs='playing';updateUI();drawAll();startLoop()}
+
+// ==================== INPUT ====================
+document.addEventListener('keydown',e=>{
+  if(gs==='over')return;
+  if(e.key==='Escape'){if(gs==='playing'){gs='paused';cancelAnimationFrame(rafId);$('pause-ov').classList.add('show')}else if(gs==='paused'){gs='playing';$('pause-ov').classList.remove('show');loop.last=performance.now();loop(performance.now())}return}
+  if(gs!=='playing'||!game||!game.p||game.over||myPn===0)return;
+  switch(e.key){
+    case 'ArrowLeft':e.preventDefault();game.moveL();break;case 'ArrowRight':e.preventDefault();game.moveR();break;
+    case 'ArrowDown':e.preventDefault();game.softDrop();break;case 'ArrowUp':e.preventDefault();game.rotate(1);break;
+    case 'z':case 'Z':e.preventDefault();game.rotate(-1);break;case ' ':e.preventDefault();game.hardDrop();break;
+    case 'c':case 'C':case 'Shift':e.preventDefault();game.doHold();if(game.over)die();break;
+  }
+});
+// Touch buttons — pointerdown only (touch-action:manipulation CSS prevents 300ms delay)
+document.querySelectorAll('#tbar [data-a]').forEach(btn=>{
+  function fire(e){e.preventDefault();e.stopPropagation();const a=btn.dataset.a;if(!a||gs!=='playing'||!game||!game.p||game.over||myPn===0)return;
+    switch(a){case 'left':game.moveL();break;case 'right':game.moveR();break;case 'down':game.softDrop();break;case 'rotate':game.rotate(1);break;case 'drop':game.hardDrop();break;case 'hold':game.doHold();if(game.over)die();break}}
+  btn.addEventListener('pointerdown',fire);
+});
+
+// Mobile: detect when tab becomes visible again (un-background)
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)return;
+  if(mode!=='battle'||!sock||!sock.connected)return;
+  // immediate heartbeat to let server know we're back
+  sock.emit('heartbeat');lastAck=Date.now();
+  if(!hbIv)startHB();
+  // if game was paused (likely server-side DC) and not over, try rejoin
+  if(gs==='idle'&&roomId&&bName&&game&&!game.over){
+    sock.emit('rejoin',{name:bName,roomId});
+  }
+});
+
+// ==================== INIT ====================
+// Hide touch bar on non-touch desktop; show on touch devices or narrow screens
+(function(){
+  const isTouch='ontouchstart' in window||navigator.maxTouchPoints>0;
+  if(!isTouch&&window.innerWidth>750){$('tbar').style.display='none'}
+  window.addEventListener('resize',()=>{
+    if(!isTouch&&window.innerWidth>750){$('tbar').style.display='none'}
+    else{$('tbar').style.display=''}
+  });
+})();
+game=new Tetris();updateUI();drawAll();
+
+// offline bar
+(function(){const bar=$('off-bar');setInterval(()=>{if(sock&&!sock.connected)return;fetch('/ping',{method:'GET',cache:'no-store'}).catch(()=>{bar.style.display='block'})},5000);window.addEventListener('offline',()=>{bar.style.display='block'});window.addEventListener('online',()=>{if(sock&&sock.connected)bar.style.display='none'})})();
+$('ni').addEventListener('keydown',e=>{if(e.key==='Enter')enterLobby()});
+</script>
+</body>
+</html>
