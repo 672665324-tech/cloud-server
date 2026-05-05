@@ -448,7 +448,7 @@ const AE = {
   init() {
     this.audio.volume = this.volume;
     this.audio.addEventListener('ended', () => this.next());
-    this.audio.addEventListener('timeupdate', () => UI.updateProgress());
+    this.audio.addEventListener('timeupdate', () => { UI.updateProgress(); Lyrics.update(this.audio.currentTime || 0); });
     this.audio.addEventListener('loadedmetadata', () => UI.updateDuration());
     document.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT') return;
@@ -637,8 +637,11 @@ const UI = {
       const div = document.createElement('div');
       div.className = 'playlist-item' + (PM.currentPlaylistId === pl.id ? ' active' : '');
       div.setAttribute('data-pl', pl.id);
-      div.innerHTML = '<span class="pl-icon">&#127925;</span><span class="pl-name">' + esc(pl.name) + '</span><span class="pl-del" onclick="event.stopPropagation();PM.deletePlaylist(\'' + pl.id + '\')">&#10005;</span>';
-      div.addEventListener('click', () => UI.selectPlaylist(pl.id));
+      div.innerHTML = '<span class="pl-icon">&#127925;</span><span class="pl-name">' + esc(pl.name) + '</span><span class="pl-del" data-action="delete-pl" data-id="' + esc(pl.id) + '">&#10005;</span>';
+      div.addEventListener('click', (e) => {
+        if (e.target.dataset.action === 'delete-pl') { e.stopPropagation(); PM.deletePlaylist(e.target.dataset.id); }
+        else UI.selectPlaylist(pl.id);
+      });
       div.addEventListener('dblclick', (e) => { e.stopPropagation(); PM.renamePlaylist(pl.id); });
       container.appendChild(div);
     }
@@ -708,21 +711,37 @@ const UI = {
         + '<td><span class="song-artist">' + esc(song.album || '--') + '</span></td>'
         + '<td>' + formatTime(song.duration) + '</td>'
         + '<td><div class="song-actions">'
-        + '<button class="' + (isLiked?'liked':'') + '" onclick="event.stopPropagation();UI.toggleLike(\''+song.id+'\')" title="喜欢">&#10084;</button>'
-        + '<button onclick="event.stopPropagation();PM.addToQueue(\''+song.id+'\')" title="下一首播放">&#128203;</button>'
-        + '<button onclick="event.stopPropagation();UI.showAddToPlaylist(\''+song.id+'\')" title="添加到列表">&#43;</button>'
-        + '<button onclick="event.stopPropagation();UI.removeSong(\''+song.id+'\')" title="删除">&#128465;</button>'
+        + '<button class="' + (isLiked?'liked':'') + '" data-action="like" data-id="' + esc(song.id) + '" title="喜欢">&#10084;</button>'
+        + '<button data-action="queue" data-id="' + esc(song.id) + '" title="下一首播放">&#128203;</button>'
+        + '<button data-action="add-pl" data-id="' + esc(song.id) + '" title="添加到列表">&#43;</button>'
+        + '<button data-action="delete" data-id="' + esc(song.id) + '" title="删除">&#128465;</button>'
         + '</div></td>';
-      tr.addEventListener('click', () => AE.play(song.id));
+      tr.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (btn) {
+          e.stopPropagation();
+          const id = btn.dataset.id;
+          if (btn.dataset.action === 'like') UI.toggleLike(id);
+          else if (btn.dataset.action === 'queue') PM.addToQueue(id);
+          else if (btn.dataset.action === 'add-pl') UI.showAddToPlaylist(id);
+          else if (btn.dataset.action === 'delete') UI.removeSong(id);
+        } else {
+          AE.play(song.id);
+        }
+      });
       tbody.appendChild(tr);
     });
 
     this.renderSidebar();
   },
 
+  _filterTimer: null,
   filterSongs(q) {
-    this._currentFilter = q.trim();
-    this.renderSongList();
+    clearTimeout(this._filterTimer);
+    this._filterTimer = setTimeout(() => {
+      this._currentFilter = q.trim();
+      this.renderSongList();
+    }, 200);
   },
 
   highlightPlaying() {
@@ -740,7 +759,14 @@ const UI = {
       const cover = document.getElementById('pb-cover');
       if (song.cover) {
         let url = this._coverUrls.get(song.id);
-        if (!url) { url = URL.createObjectURL(song.cover); this._coverUrls.set(song.id, url); }
+        if (!url) {
+          // Revoke previous cover URL if switching songs
+          for (const [id, oldUrl] of this._coverUrls) {
+            if (id !== song.id) { URL.revokeObjectURL(oldUrl); this._coverUrls.delete(id); }
+          }
+          url = URL.createObjectURL(song.cover);
+          this._coverUrls.set(song.id, url);
+        }
         cover.innerHTML = '<img src="' + url + '">';
       } else {
         cover.innerHTML = '&#127925;';
@@ -789,6 +815,9 @@ const UI = {
 
   async removeSong(songId) {
     if (!confirm('确定删除这首歌？')) return;
+    // Release cover Object URL if exists
+    const coverUrl = this._coverUrls.get(songId);
+    if (coverUrl) { URL.revokeObjectURL(coverUrl); this._coverUrls.delete(songId); }
     await DB.deleteSong(songId);
     // remove from all playlists
     for (const pl of this._playlists) {
@@ -987,7 +1016,7 @@ const AccountBridge = {
 };
 
 // ===== 工具函数 =====
-function esc(s) { var d = document.createElement('span'); d.textContent = s; return d.innerHTML; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function formatTime(sec) {
   if (!sec || !isFinite(sec)) return '0:00';
   const m = Math.floor(sec / 60);
@@ -1010,13 +1039,6 @@ function formatTime(sec) {
   dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
   dz.addEventListener('drop', (e) => { e.preventDefault(); dz.classList.remove('drag-over'); processFiles(e.dataTransfer.files); });
   fi.addEventListener('change', () => { if (fi.files.length) processFiles(fi.files); fi.value = ''; });
-
-  // 可视化 + 歌词时间更新
-  setInterval(() => {
-    if (AE.playing) {
-      Lyrics.update(AE.audio.currentTime || 0);
-    }
-  }, 200);
 })();
 </script>
 </body>
