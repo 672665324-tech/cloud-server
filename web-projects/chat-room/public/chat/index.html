@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>聊天室</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* 登录页 */
+    #login-page {
+      text-align: center;
+    }
+    #login-page h1 {
+      font-size: 2.5em;
+      margin-bottom: 30px;
+      color: #e94560;
+    }
+    #login-page input {
+      padding: 12px 20px;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 8px;
+      background: #16213e;
+      color: #eee;
+      outline: none;
+      width: 260px;
+    }
+    #login-page button {
+      padding: 12px 30px;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 8px;
+      background: #e94560;
+      color: #fff;
+      cursor: pointer;
+      margin-left: 10px;
+      transition: background 0.2s;
+    }
+    #login-page button:hover { background: #c73b54; }
+
+    /* 聊天页 */
+    #chat-page {
+      display: none;
+      width: 900px;
+      max-width: 95vw;
+      height: 85vh;
+      background: #16213e;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(0,0,0,0.4);
+    }
+    .chat-header {
+      background: #0f3460;
+      padding: 15px 20px;
+      font-size: 1.2em;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .chat-header span { color: #e94560; }
+    .chat-body {
+      display: flex;
+      height: calc(100% - 60px);
+    }
+    .chat-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    .message {
+      margin-bottom: 12px;
+      animation: fadeIn 0.3s;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .message.system {
+      text-align: center;
+      color: #888;
+      font-size: 0.9em;
+    }
+    .message.chat .time {
+      color: #888;
+      font-size: 0.8em;
+      margin-right: 6px;
+    }
+    .message.chat .username {
+      color: #e94560;
+      font-weight: bold;
+      margin-right: 6px;
+    }
+    .message.chat .text {
+      color: #eee;
+    }
+    .input-area {
+      display: flex;
+      padding: 15px 20px;
+      background: #0f3460;
+      gap: 10px;
+    }
+    .input-area input {
+      flex: 1;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      background: #1a1a2e;
+      color: #eee;
+      font-size: 1em;
+      outline: none;
+    }
+    .input-area button {
+      padding: 10px 25px;
+      border: none;
+      border-radius: 8px;
+      background: #e94560;
+      color: #fff;
+      font-size: 1em;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .input-area button:hover { background: #c73b54; }
+
+    /* 在线用户 */
+    .sidebar {
+      width: 180px;
+      background: #0f3460;
+      padding: 15px;
+      border-left: 1px solid #1a1a2e;
+    }
+    .sidebar h3 {
+      font-size: 1em;
+      color: #e94560;
+      margin-bottom: 12px;
+    }
+    .sidebar ul {
+      list-style: none;
+    }
+    .sidebar li {
+      padding: 6px 0;
+      font-size: 0.9em;
+      color: #ccc;
+    }
+    .sidebar li::before {
+      content: '● ';
+      color: #4ecca3;
+      font-size: 0.7em;
+    }
+
+    .messages::-webkit-scrollbar { width: 6px; }
+    .messages::-webkit-scrollbar-track { background: #1a1a2e; }
+    .messages::-webkit-scrollbar-thumb { background: #e94560; border-radius: 3px; }
+
+    @media (max-width: 768px) {
+      #chat-page { width: 100vw; height: 100vh; height: 100dvh; border-radius: 0; max-width: 100vw; }
+      #login-page { width: 100%; padding: 0 16px; }
+      #login-page input { width: 100%; max-width: 320px; }
+      #login-page button { width: 100%; max-width: 320px; margin: 10px 0 0; }
+      .chat-body { flex-direction: column; height: calc(100% - 50px); }
+      .sidebar { width: 100%; padding: 8px 15px; border-left: none; border-top: 1px solid #1a1a2e; display: flex; align-items: center; gap: 10px; overflow-x: auto; }
+      .sidebar h3 { margin-bottom: 0; font-size: 0.85em; flex-shrink: 0; }
+      .sidebar ul { display: flex; gap: 8px; list-style: none; }
+      .sidebar li { padding: 2px 0; font-size: 0.8em; }
+      .sidebar li::before { display: none; }
+      .chat-main { min-height: 0; }
+      .messages { padding: 10px; }
+      .input-area { padding: 10px; gap: 6px; }
+      .input-area input { font-size: 0.9em; }
+      .input-area button { padding: 10px 16px; font-size: 0.9em; }
+      .chat-header { padding: 10px 15px; font-size: 1em; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 登录页 -->
+  <div id="login-page">
+    <h1>💬 聊天室</h1>
+    <input id="username-input" type="text" placeholder="请输入你的昵称" maxlength="12" autofocus>
+    <button onclick="joinChat()">进入聊天室</button>
+  </div>
+
+  <!-- 聊天页 -->
+  <div id="chat-page">
+    <div class="chat-header">
+      <div>🏠 大厅 <a href="/" style="color:#888;text-decoration:none;font-size:0.7em;margin-left:10px;">← 返回主页</a></div>
+      <div>👤 <span id="my-username"></span></div>
+    </div>
+    <div class="chat-body">
+      <div class="chat-main">
+        <div class="messages" id="messages"></div>
+        <div class="input-area">
+          <input id="message-input" type="text" placeholder="输入消息..." maxlength="500" autocomplete="off">
+          <button onclick="sendMessage()">发送</button>
+        </div>
+      </div>
+      <div class="sidebar">
+        <h3>在线用户</h3>
+        <ul id="user-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let username = '';
+
+    // 登录
+    function joinChat() {
+      const input = document.getElementById('username-input');
+      const name = input.value.trim();
+      if (!name) return alert('请输入昵称');
+      username = name;
+      document.getElementById('my-username').textContent = username;
+      document.getElementById('login-page').style.display = 'none';
+      document.getElementById('chat-page').style.display = 'block';
+      document.getElementById('message-input').focus();
+      socket.emit('join', { username });
+    }
+
+    // Enter 快捷操作
+    document.getElementById('username-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') joinChat();
+    });
+    document.getElementById('message-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    // 发送消息
+    function sendMessage() {
+      const input = document.getElementById('message-input');
+      const text = input.value.trim();
+      if (!text) return;
+      socket.emit('chat message', text);
+      input.value = '';
+    }
+
+    socket.on('connect', () => {
+      if (username) socket.emit('join', { username });
+    });
+
+    // 接收历史消息
+    socket.on('history', (msgs) => {
+      document.getElementById('messages').innerHTML = '';
+      msgs.forEach(addMessage);
+      scrollBottom();
+    });
+
+    // 接收新消息
+    socket.on('chat message', (msg) => {
+      addMessage(msg);
+      scrollBottom();
+    });
+
+    // 更新在线用户
+    socket.on('room users', (users) => {
+      const list = document.getElementById('user-list');
+      list.innerHTML = '';
+      for (const u of users) {
+        const li = document.createElement('li');
+        li.textContent = u;
+        list.appendChild(li);
+      }
+    });
+
+    function addMessage(msg) {
+      const div = document.createElement('div');
+      div.className = `message ${msg.type}`;
+
+      if (msg.type === 'system') {
+        div.textContent = `[${msg.time}] ${msg.text}`;
+      } else {
+        div.innerHTML = `<span class="time">${msg.time}</span><span class="username">${escapeHtml(msg.username)}</span><span class="text">${escapeHtml(msg.text)}</span>`;
+      }
+
+      document.getElementById('messages').appendChild(div);
+    }
+
+    function scrollBottom() {
+      const msgs = document.getElementById('messages');
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      const p = document.createElement('span');
+      p.textContent = str;
+      return p.innerHTML;
+    }
+  </script>
+  <div id="offline-bar" style="display:none;position:fixed;top:0;left:0;right:0;background:#e94560;color:#fff;text-align:center;padding:8px;z-index:9999;font-size:0.9em;font-weight:bold">⚠ 网络连接已断开，正在尝试重连...</div>
+  <script>
+    (function(){
+      const bar = document.getElementById('offline-bar');
+      socket.on('connect', function(){ bar.style.display = 'none'; });
+      socket.on('disconnect', function(){ bar.style.display = 'block'; });
+      setInterval(function(){
+        if(!socket.connected) return;
+        fetch('/ping',{method:'GET',cache:'no-store'}).catch(function(){ bar.style.display = 'block'; });
+      },5000);
+      window.addEventListener('offline', function(){ bar.style.display = 'block'; });
+      window.addEventListener('online', function(){ if(socket.connected) bar.style.display = 'none'; });
+    })();
+  </script>
+</body>
+</html>
