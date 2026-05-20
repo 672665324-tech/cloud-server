@@ -123,7 +123,7 @@ function init(io, accountModule) {
     for (const [sid, sn] of snakes) {
       state.snakes.push({
         id: sid, name: sn.name, color: sn.color,
-        body: sn.body, alive: sn.alive, score: sn.score,
+        body: [...sn.body], alive: sn.alive, score: sn.score,
         deadUntil: sn.deadUntil
       });
     }
