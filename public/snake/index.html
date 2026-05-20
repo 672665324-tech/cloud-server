@@ -373,6 +373,7 @@
     state = 'dead';
     clearInterval(tickTimer);
     tickTimer = null;
+    deathOverlay.querySelector('.msg').textContent = '你死了';
     if (score > bestScore) {
       bestScore = score;
       localStorage.setItem('snake_best', String(bestScore));
@@ -383,8 +384,17 @@
   }
 
   function win() {
-    // Extremely unlikely, but handle it
-    die();
+    state = 'dead';
+    clearInterval(tickTimer);
+    tickTimer = null;
+    if (score > bestScore) {
+      bestScore = score;
+      localStorage.setItem('snake_best', String(bestScore));
+      bestVal.textContent = bestScore;
+    }
+    deathOverlay.querySelector('.msg').textContent = '你赢了';
+    deathScore.textContent = `得分: ${score}  |  长度: ${snake.length}`;
+    deathOverlay.style.display = 'flex';
   }
 
   function updateUI() {
@@ -560,7 +570,6 @@
 
   relayout();
   render();
-  setInterval(relayout, 2000);
 })();
 </script>
 </body>
