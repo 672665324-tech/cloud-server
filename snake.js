@@ -53,18 +53,28 @@ function init(io, accountModule) {
     const sn = snakes.get(sid);
     if (!sn) return false;
     const dirKeys = Object.keys(SN_DIRS);
-    let cells = snEmptyCells();
-    for (let i = cells.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [cells[i], cells[j]] = [cells[j], cells[i]]; }
-    for (let a = 0; a < Math.min(cells.length, 200); a++) {
-      const pos = cells[a];
-      const sd = [...dirKeys].sort(() => Math.random() - 0.5);
-      for (const d of sd) {
+    const allCells = snEmptyCells();
+    // Pre-filter cells by safe bounds for each direction
+    const safeBounds = { up: { yMin: INITIAL_LEN }, down: { yMax: GRID_H - INITIAL_LEN }, left: { xMin: INITIAL_LEN }, right: { xMax: GRID_W - INITIAL_LEN } };
+    const cellsByDir = {};
+    for (const d of dirKeys) {
+      const b = safeBounds[d];
+      cellsByDir[d] = allCells.filter(c =>
+        (b.xMin == null || c.x >= b.xMin) && (b.xMax == null || c.x < b.xMax) &&
+        (b.yMin == null || c.y >= b.yMin) && (b.yMax == null || c.y < b.yMax)
+      );
+      for (let i = cellsByDir[d].length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [cellsByDir[d][i], cellsByDir[d][j]] = [cellsByDir[d][j], cellsByDir[d][i]]; }
+    }
+    const sd = [...dirKeys].sort(() => Math.random() - 0.5);
+    for (const d of sd) {
+      const cells = cellsByDir[d];
+      for (let a = 0; a < Math.min(cells.length, 200); a++) {
+        const pos = cells[a];
         const body = [{ x: pos.x, y: pos.y }];
         let ok = true;
         const dv = SN_DIRS[d];
         for (let i = 1; i < INITIAL_LEN; i++) {
           const sx = pos.x - dv.x * i, sy = pos.y - dv.y * i;
-          if (sx < 0 || sx >= GRID_W || sy < 0 || sy >= GRID_H) { ok = false; break; }
           for (const f of snFood) { if (f.x === sx && f.y === sy) { ok = false; break; } }
           if (!ok) break;
           for (const [, os] of snakes) {
@@ -192,10 +202,8 @@ function init(io, accountModule) {
         if (entries.length < 2) continue;
         const heads = entries.filter(e => e.isHead);
         if (heads.length >= 2) {
-          // Head-on-head collision: kill all heads involved
           for (const h of heads) toKill.add(h.sid);
         } else if (heads.length === 1) {
-          // Head hit body: only kill the snake whose head it is
           toKill.add(heads[0].sid);
         }
       }
@@ -245,8 +253,8 @@ function init(io, accountModule) {
         snSpawn(sock.id);
         if (sn.alive) snSockets.get(sock.id)?.emit('you-respawned');
       }
-      startSnakeTick();
       snBroadcast();
+      startSnakeTick();
     });
 
     sock.on('rejoin', (data = {}) => {
@@ -263,16 +271,16 @@ function init(io, accountModule) {
         restoredSnake.userToken = token;
         snakes.set(sock.id, restoredSnake);
         snSockets.set(sock.id, sock);
-        startSnakeTick();
         snBroadcast();
+        startSnakeTick();
       } else {
         sn.name = cleanText(data.name, '蛇', 8);
         if (!sn.alive && sn.deadUntil === 0) {
           snSpawn(sock.id);
           if (sn.alive) snSockets.get(sock.id)?.emit('you-respawned');
         }
-        startSnakeTick();
         snBroadcast();
+        startSnakeTick();
       }
     });
 
