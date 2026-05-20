@@ -17,6 +17,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+      scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "blob:", "data:"],
       connectSrc: ["'self'", "wss:", "ws:"],
@@ -34,10 +35,21 @@ account.registerRoutes(app);
 // ===== CSRF 保护 =====
 app.use((req, res, next) => {
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-    const origin = req.headers.origin || req.headers.referer || '';
+    const origin = req.headers.origin || '';
+    const referer = req.headers.referer || '';
     const host = req.headers.host || '';
-    if (origin && !origin.includes(host)) {
-      return res.status(403).json({ error: 'CSRF 检测失败' });
+    // Must have origin or referer, and it must match the host exactly
+    if (!origin && !referer) {
+      return res.status(403).json({ error: 'CSRF 检测失败：缺少 Origin/Referer' });
+    }
+    const source = origin || referer;
+    try {
+      const url = new URL(source);
+      if (url.host !== host) {
+        return res.status(403).json({ error: 'CSRF 检测失败：来源不匹配' });
+      }
+    } catch {
+      return res.status(403).json({ error: 'CSRF 检测失败：无效来源' });
     }
   }
   next();
@@ -225,12 +237,7 @@ io.on('connection', (socket) => {
 });
 
 // ===== 加载游戏模块 =====
-const tetris = require('./tetris');
-const snake = require('./snake');
 const whiteboard = require('./whiteboard');
-
-tetris.init(io, account);
-snake.init(io, account);
 whiteboard.init(io, account);
 
 // ===== 系统状态 =====
@@ -254,9 +261,7 @@ setInterval(() => {
 function buildStatus() {
   const totalMem = os.totalmem(), freeMem = os.freemem();
   const memUsed = process.memoryUsage();
-  const tetrisData = tetris.tUsers ? { online: tetris.tUsers.size, rooms: tetris.tRooms.size, gamesActive: [...tetris.tGames.values()].filter(g => g.active).length } : { online: 0, rooms: 0, gamesActive: 0 };
   const whiteboardData = whiteboard.wbUsers ? { online: whiteboard.wbUsers.length, strokes: whiteboard.wbStrokes.length } : { online: 0, strokes: 0 };
-  const snakeData = snake.snakes ? { online: [...snake.snakes.values()].filter(s => s.alive).length, total: snake.snakes.size, food: snake.snFood.length } : { online: 0, total: 0, food: 0 };
 
   return {
     system: {
@@ -275,15 +280,13 @@ function buildStatus() {
     },
     services: {
       chat: { online: onlineUsers.size, messages: messages.length },
-      tetris: tetrisData,
-      whiteboard: whiteboardData,
-      snake: snakeData
+      whiteboard: whiteboardData
     },
     time: Date.now()
   };
 }
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`ISLA LABS: http://localhost:${PORT}`);
 });

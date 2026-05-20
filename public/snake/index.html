@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>多人贪吃蛇 — ISLA LABS</title>
+  <title>贪吃蛇 — ISLA LABS</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -53,34 +53,32 @@
       text-transform: uppercase;
       margin-bottom: 10px;
     }
-    .score-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 5px 6px;
-      border-radius: 6px;
-      font-size: 0.85em;
-      margin-bottom: 3px;
+    .stat-box {
+      background: rgba(14,28,48,0.7);
+      border: 1px solid rgba(120,180,230,0.1);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 10px;
+      text-align: center;
     }
-    .score-item .color {
-      width: 10px; height: 10px;
-      border-radius: 3px;
-      flex-shrink: 0;
-    }
-    .score-item .name {
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .score-item .pts {
-      color: #7cb8e8;
+    .stat-box .v {
+      font-size: 1.8em;
       font-weight: 700;
-      min-width: 24px;
-      text-align: right;
+      color: #7cb8e8;
     }
-    .score-item.dead { opacity: 0.4; }
-    .score-item.me { background: rgba(124,184,232,0.06); }
+    .stat-box .t {
+      font-size: 0.7em;
+      color: #5a7a9a;
+      margin-top: 2px;
+    }
+    .stat-box .v.best { color: #f0a000; }
+
+    .hint {
+      font-size: 0.72em;
+      color: #4a6a8a;
+      line-height: 1.6;
+      margin-top: 8px;
+    }
 
     /* 死亡提示 */
     #death-overlay {
@@ -92,7 +90,8 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      pointer-events: none;
+      pointer-events: auto;
+      cursor: pointer;
     }
     #death-overlay .msg {
       font-size: 2.5em;
@@ -101,16 +100,45 @@
       letter-spacing: 4px;
       animation: shake 0.4s ease;
     }
-    #death-overlay .timer {
-      font-size: 1.2em;
+    #death-overlay .sub {
+      font-size: 1.1em;
       color: #8aaccc;
-      margin-top: 10px;
+      margin-top: 12px;
+    }
+    #death-overlay .restart-hint {
+      font-size: 0.85em;
+      color: #5a7a9a;
+      margin-top: 20px;
     }
     @keyframes shake {
       0%,100%{transform:translateX(0)}
       25%{transform:translateX(-6px)}
       50%{transform:translateX(6px)}
       75%{transform:translateX(-4px)}
+    }
+
+    /* 开始提示 */
+    #start-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    #start-overlay .title {
+      font-size: 3em;
+      font-weight: 700;
+      color: #7cb8e8;
+      letter-spacing: 6px;
+      margin-bottom: 16px;
+    }
+    #start-overlay .sub {
+      font-size: 1em;
+      color: #8aaccc;
     }
 
     /* 移动端方向键 */
@@ -144,18 +172,16 @@
     .dpad-left  { top: 56px; left: 0; }
     .dpad-right { top: 56px; left: 112px; }
 
-    #conn-bar {
+    a.back {
       position: fixed;
-      top: 0; left: 0; right: 0;
-      background: #e94560;
-      color: #fff;
-      text-align: center;
-      padding: 6px;
-      font-size: 0.85em;
-      font-weight: bold;
-      z-index: 999;
-      display: none;
+      top: 12px;
+      left: 16px;
+      color: #5a84a0;
+      font-size: 0.8em;
+      text-decoration: none;
+      z-index: 50;
     }
+    a.back:hover { color: #7cb8e8; }
 
     @media (max-width: 768px) {
       #sidebar { width: 92px; padding: 10px 6px; font-size: 0.7em; }
@@ -165,138 +191,95 @@
       .dpad-down  { top: 90px; left: 45px; }
       .dpad-left  { top: 45px; left: 0; }
       .dpad-right { top: 45px; left: 90px; }
-      .score-item .name { max-width: 45px; }
+      .stat-box .v { font-size: 1.3em; }
     }
   </style>
 </head>
 <body>
 
-<div id="conn-bar">⚠ 连接断开，正在重连...</div>
+<a class="back" href="/">&larr; 返回主页</a>
 
 <div id="game-wrap">
   <canvas id="canvas"></canvas>
 </div>
 
 <div id="sidebar">
-  <h3>排行榜</h3>
-  <div id="score-list"></div>
+  <h3>统计</h3>
+  <div class="stat-box">
+    <div class="v" id="score-val">0</div>
+    <div class="t">当前分数</div>
+  </div>
+  <div class="stat-box">
+    <div class="v best" id="best-val">0</div>
+    <div class="t">最高分</div>
+  </div>
+  <div class="stat-box">
+    <div class="v" id="length-val">3</div>
+    <div class="t">蛇身长度</div>
+  </div>
+  <div class="hint">
+    方向键 / WASD 控制方向<br>
+    空格键 暂停<br>
+    吃食物得分变长
+  </div>
+</div>
+
+<div id="start-overlay">
+  <div class="title">贪吃蛇</div>
+  <div class="sub">点击或按任意键开始</div>
 </div>
 
 <div id="death-overlay">
   <div class="msg">你死了</div>
-  <div class="timer" id="respawn-timer"></div>
+  <div class="sub" id="death-score"></div>
+  <div class="restart-hint">点击或按任意键重新开始</div>
 </div>
 
 <!-- 移动端方向键 -->
 <div id="dpad">
   <div class="dpad-btn dpad-up" data-dir="up">▲</div>
-  <div class="dpad-btn dpad-down"  data-dir="down">▼</div>
-  <div class="dpad-btn dpad-left"  data-dir="left">◀</div>
-  <div class="dpad-btn dpad-right"  data-dir="right">▶</div>
+  <div class="dpad-btn dpad-down" data-dir="down">▼</div>
+  <div class="dpad-btn dpad-left" data-dir="left">◀</div>
+  <div class="dpad-btn dpad-right" data-dir="right">▶</div>
 </div>
 
-<script src="/socket.io/socket.io.js"></script>
 <script>
 (function(){
-  const socket = io('/snake', { transports: ['websocket', 'polling'] });
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
-  const connBar = document.getElementById('conn-bar');
+  const startOverlay = document.getElementById('start-overlay');
   const deathOverlay = document.getElementById('death-overlay');
-  const respawnTimer = document.getElementById('respawn-timer');
-  const scoreList = document.getElementById('score-list');
+  const deathScore = document.getElementById('death-score');
+  const scoreVal = document.getElementById('score-val');
+  const bestVal = document.getElementById('best-val');
+  const lengthVal = document.getElementById('length-val');
 
-  // State
-  let prevState = null, currState = null, stateTime = 0;
-  let myId = null;
-  let isDead = false, deadUntil = 0;
-  let myName = '';
-  const CELL = 16; // base cell size in pixels, will scale
+  // ===== Constants =====
+  const GRID_W = 40, GRID_H = 30;
+  const TICK_MS = 120; // ms per game tick
+  const INITIAL_LENGTH = 3;
 
-  // Join
-  myName = (prompt('输入昵称', '蛇蛇') || '蛇蛇').slice(0, 8);
-  let rejoined = false;
-  socket.on('connect', () => { connBar.style.display = 'none'; if (!rejoined) socket.emit('join', { name: myName }); else rejoined = false; });
-  socket.on('disconnect', () => { connBar.style.display = 'block'; });
-  socket.on('connect_error', () => { connBar.style.display = 'block'; });
-  socket.io.on('reconnect', () => { if (myName) { rejoined = true; socket.emit('rejoin', { name: myName }); } });
-  socket.on('rejoin-failed', () => { rejoined = false; socket.emit('join', { name: myName }); });
+  // ===== Game State =====
+  let snake = [];
+  let food = null;
+  let direction = 'right';
+  let dirQueue = [];
+  let score = 0;
+  let bestScore = parseInt(localStorage.getItem('snake_best') || '0', 10);
+  let state = 'start'; // start | playing | paused | dead
+  let tickTimer = null;
 
-  socket.on('state', (s) => {
-    prevState = currState;
-    currState = s;
-    stateTime = performance.now();
-    myId = socket.id;
-    updateUI();
-  });
+  bestVal.textContent = bestScore;
 
-  socket.on('you-died', () => { isDead = true; deathOverlay.style.display = 'flex'; });
-  socket.on('you-respawned', () => { isDead = false; deathOverlay.style.display = 'none'; });
+  // ===== Rendering =====
+  let layoutData = { w: 640, h: 480, cellW: 16, cellH: 16 };
 
-  function updateUI() {
-    if (!currState) return;
-
-    // Death timer
-    const me = currState.snakes.find(s => s.id === myId);
-    if (me && !me.alive && me.deadUntil) {
-      deadUntil = me.deadUntil;
-      isDead = true;
-      deathOverlay.style.display = 'flex';
-    } else if (me && me.alive && isDead) {
-      isDead = false;
-      deathOverlay.style.display = 'none';
-    }
-
-    // Scoreboard
-    const sorted = [...currState.snakes].sort((a, b) => b.score - a.score);
-    scoreList.innerHTML = '';
-    for (const sn of sorted) {
-      const div = document.createElement('div');
-      div.className = 'score-item' + (sn.alive ? '' : ' dead') + (sn.id === myId ? ' me' : '');
-      const color = document.createElement('span');
-      color.className = 'color';
-      color.style.background = sn.color;
-      const name = document.createElement('span');
-      name.className = 'name';
-      name.textContent = sn.name || '—';
-      const pts = document.createElement('span');
-      pts.className = 'pts';
-      pts.textContent = sn.score;
-      div.append(color, name, pts);
-      scoreList.appendChild(div);
-    }
-  }
-
-  // Death countdown tick
-  setInterval(() => {
-    if (!isDead) return;
-    const left = Math.max(0, Math.ceil((deadUntil - Date.now()) / 1000));
-    respawnTimer.textContent = left > 0 ? left + ' 秒后复活' : '复活中...';
-  }, 200);
-
-  // Controls
-  function sendDir(dir) {
-    socket.emit('direction', { dir });
-  }
-
-  window.addEventListener('keydown', (e) => {
-    const map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
-                  w: 'up', W: 'up', s: 'down', S: 'down', a: 'left', A: 'left', d: 'right', D: 'right' };
-    if (map[e.key]) { e.preventDefault(); sendDir(map[e.key]); }
-  });
-
-  // Mobile D-pad
-  document.querySelectorAll('.dpad-btn').forEach(btn => {
-    btn.addEventListener('pointerdown', (e) => { e.preventDefault(); sendDir(btn.dataset.dir); });
-  });
-
-  // ---- Rendering ----
   function layout() {
     const isMobile = window.matchMedia('(max-width: 768px)').matches;
-  const maxW = window.innerWidth - (isMobile ? 104 : 184); // sidebar
+    const maxW = window.innerWidth - (isMobile ? 104 : 184);
     const maxH = window.innerHeight - 8;
-    const idealW = GRID_W * CELL;
-    const idealH = GRID_H * CELL;
+    const idealW = GRID_W * 16;
+    const idealH = GRID_H * 16;
     const scale = Math.min(maxW / idealW, maxH / idealH, 1.5);
     const w = Math.floor(idealW * scale);
     const h = Math.floor(idealH * scale);
@@ -307,23 +290,176 @@
     canvas.height = h * dpr;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
-    return { w, h, scale, cellW: w / GRID_W, cellH: h / GRID_H };
+    layoutData = { w, h, cellW: w / GRID_W, cellH: h / GRID_H };
   }
 
-  const GRID_W = 40, GRID_H = 30;
-
-  let layoutData = { w: 640, h: 480, scale: 1, cellW: 16, cellH: 16 };
-  function relayout() { layoutData = layout(); }
+  function relayout() { layout(); }
   window.addEventListener('resize', relayout);
   relayout();
 
+  // ===== Game Logic =====
+  function spawn() {
+    snake = [];
+    const startX = Math.floor(GRID_W / 2);
+    const startY = Math.floor(GRID_H / 2);
+    for (let i = 0; i < INITIAL_LENGTH; i++) {
+      snake.push({ x: startX - i, y: startY });
+    }
+    direction = 'right';
+    dirQueue = [];
+    score = 0;
+    spawnFood();
+    updateUI();
+  }
+
+  function spawnFood() {
+    const occupied = new Set(snake.map(s => s.x + ',' + s.y));
+    const free = [];
+    for (let x = 0; x < GRID_W; x++) {
+      for (let y = 0; y < GRID_H; y++) {
+        if (!occupied.has(x + ',' + y)) free.push({ x, y });
+      }
+    }
+    if (free.length === 0) { win(); return; }
+    food = free[Math.floor(Math.random() * free.length)];
+  }
+
+  function tick() {
+    // Process direction queue
+    if (dirQueue.length > 0) {
+      const next = dirQueue.shift();
+      if (!isOpposite(direction, next)) {
+        direction = next;
+      }
+    }
+
+    // Move
+    const head = snake[0];
+    const dx = direction === 'right' ? 1 : direction === 'left' ? -1 : 0;
+    const dy = direction === 'down' ? 1 : direction === 'up' ? -1 : 0;
+    const newHead = { x: head.x + dx, y: head.y + dy };
+
+    // Wall collision
+    if (newHead.x < 0 || newHead.x >= GRID_W || newHead.y < 0 || newHead.y >= GRID_H) {
+      die(); return;
+    }
+
+    // Self collision
+    for (const seg of snake) {
+      if (seg.x === newHead.x && seg.y === newHead.y) {
+        die(); return;
+      }
+    }
+
+    snake.unshift(newHead);
+
+    // Eat food
+    if (food && newHead.x === food.x && newHead.y === food.y) {
+      score += 10;
+      spawnFood();
+    } else {
+      snake.pop();
+    }
+
+    updateUI();
+  }
+
+  function isOpposite(a, b) {
+    return (a === 'up' && b === 'down') || (a === 'down' && b === 'up') ||
+           (a === 'left' && b === 'right') || (a === 'right' && b === 'left');
+  }
+
+  function die() {
+    state = 'dead';
+    clearInterval(tickTimer);
+    tickTimer = null;
+    deathOverlay.querySelector('.msg').textContent = '你死了';
+    if (score > bestScore) {
+      bestScore = score;
+      localStorage.setItem('snake_best', String(bestScore));
+      bestVal.textContent = bestScore;
+    }
+    deathScore.textContent = `得分: ${score}  |  长度: ${snake.length}`;
+    deathOverlay.style.display = 'flex';
+  }
+
+  function win() {
+    state = 'dead';
+    clearInterval(tickTimer);
+    tickTimer = null;
+    if (score > bestScore) {
+      bestScore = score;
+      localStorage.setItem('snake_best', String(bestScore));
+      bestVal.textContent = bestScore;
+    }
+    deathOverlay.querySelector('.msg').textContent = '你赢了';
+    deathScore.textContent = `得分: ${score}  |  长度: ${snake.length}`;
+    deathOverlay.style.display = 'flex';
+  }
+
+  function updateUI() {
+    scoreVal.textContent = score;
+    lengthVal.textContent = snake.length;
+  }
+
+  function startGame() {
+    state = 'playing';
+    startOverlay.style.display = 'none';
+    deathOverlay.style.display = 'none';
+    spawn();
+    tickTimer = setInterval(tick, TICK_MS);
+    render();
+  }
+
+  // ===== Controls =====
+  function queueDir(dir) {
+    if (state !== 'playing') return;
+    // Check against last queued direction (or current if queue empty)
+    const lastDir = dirQueue.length > 0 ? dirQueue[dirQueue.length - 1] : direction;
+    if (!isOpposite(lastDir, dir) && dir !== lastDir) {
+      if (dirQueue.length < 3) dirQueue.push(dir);
+    }
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (state === 'start') { startGame(); return; }
+    if (state === 'dead') { startGame(); return; }
+
+    const map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+                  w: 'up', W: 'up', s: 'down', S: 'down', a: 'left', A: 'left', d: 'right', D: 'right' };
+    if (map[e.key]) { e.preventDefault(); queueDir(map[e.key]); return; }
+
+    if (e.key === ' ' || e.key === 'Escape') {
+      e.preventDefault();
+      if (state === 'playing') {
+        state = 'paused';
+        clearInterval(tickTimer);
+        tickTimer = null;
+      } else if (state === 'paused') {
+        state = 'playing';
+        tickTimer = setInterval(tick, TICK_MS);
+      }
+    }
+  });
+
+  // Mobile D-pad
+  document.querySelectorAll('.dpad-btn').forEach(btn => {
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (state === 'start') { startGame(); return; }
+      if (state === 'dead') { startGame(); return; }
+      queueDir(btn.dataset.dir);
+    });
+  });
+
+  // Click to start/restart
+  startOverlay.addEventListener('click', () => { if (state === 'start') startGame(); });
+  deathOverlay.addEventListener('click', () => { if (state === 'dead') startGame(); });
+
+  // ===== Rendering =====
   function render() {
     requestAnimationFrame(render);
-    if (!currState) return;
-
     const { w, h, cellW, cellH } = layoutData;
-    const elapsed = performance.now() - stateTime;
-    const t = Math.min(elapsed / 150, 1);
 
     ctx.clearRect(0, 0, w, h);
 
@@ -338,11 +474,11 @@
     }
 
     // Food
-    const now = Date.now();
-    const pulse = 1 + Math.sin(now * 0.005) * 0.2;
-    for (const f of currState.food) {
-      const cx = (f.x + 0.5) * cellW;
-      const cy = (f.y + 0.5) * cellH;
+    if (food) {
+      const now = Date.now();
+      const pulse = 1 + Math.sin(now * 0.005) * 0.2;
+      const cx = (food.x + 0.5) * cellW;
+      const cy = (food.y + 0.5) * cellH;
       const r = Math.min(cellW, cellH) * 0.35 * pulse;
       ctx.fillStyle = '#f0a000';
       ctx.shadowColor = '#f0a000';
@@ -351,67 +487,66 @@
       ctx.shadowBlur = 0;
     }
 
-    // Snakes with interpolation
+    // Snake
+    if (snake.length === 0) return;
     const pad = Math.min(cellW, cellH) * 0.08;
-    for (const sn of currState.snakes) {
-      if (!sn.alive || sn.body.length === 0) continue;
 
-      let body = sn.body;
-      if (prevState && t < 1) {
-        const prev = prevState.snakes.find(ps => ps.id === sn.id);
-        if (prev && prev.body.length === sn.body.length && prev.alive) {
-          body = sn.body.map((seg, i) => ({
-            x: prev.body[i].x + (seg.x - prev.body[i].x) * t,
-            y: prev.body[i].y + (seg.y - prev.body[i].y) * t
-          }));
+    // Body shadow
+    ctx.shadowColor = '#4ecca3';
+    ctx.shadowBlur = 8;
+
+    for (let i = snake.length - 1; i >= 0; i--) {
+      const seg = snake[i];
+      const sx = seg.x * cellW + pad;
+      const sy = seg.y * cellH + pad;
+      const sw = cellW - pad * 2;
+      const sh = cellH - pad * 2;
+      const r = Math.min(sw, sh) * 0.4;
+
+      if (i === 0) {
+        // Head
+        ctx.fillStyle = '#4ecca3';
+        ctx.beginPath();
+        ctx.roundRect(sx - 1, sy - 1, sw + 2, sh + 2, r + 1);
+        ctx.fill();
+        // Eyes
+        ctx.fillStyle = '#fff';
+        const eyeR = Math.max(2, sw * 0.18);
+        let e1x = 0.65, e1y = 0.3, e2x = 0.65, e2y = 0.7;
+        if (snake.length > 1) {
+          const dx = snake[0].x - snake[1].x, dy = snake[0].y - snake[1].y;
+          e1x = 0.5 + dx * 0.18; e1y = 0.5 + dy * 0.18 + (dx !== 0 ? -0.18 : 0);
+          e2x = 0.5 + dx * 0.18; e2y = 0.5 + dy * 0.18 + (dx !== 0 ? 0.18 : 0);
         }
+        ctx.beginPath(); ctx.arc(sx + sw * e1x, sy + sh * e1y, eyeR, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx + sw * e2x, sy + sh * e2y, eyeR, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#111';
+        const pr = eyeR * 0.55;
+        ctx.beginPath(); ctx.arc(sx + sw * e1x, sy + sh * e1y, pr, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx + sw * e2x, sy + sh * e2y, pr, 0, Math.PI * 2); ctx.fill();
+      } else {
+        const alpha = 1 - i / snake.length * 0.5;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = '#4ecca3';
+        ctx.beginPath();
+        ctx.roundRect(sx, sy, sw, sh, r);
+        ctx.fill();
+        ctx.globalAlpha = 1;
       }
+    }
+    ctx.shadowBlur = 0;
 
-      // Body shadow
-      ctx.shadowColor = sn.color;
-      ctx.shadowBlur = 8;
-
-      // Draw body segments
-      ctx.fillStyle = sn.color;
-      for (let i = body.length - 1; i >= 0; i--) {
-        const sx = body[i].x * cellW + pad;
-        const sy = body[i].y * cellH + pad;
-        const sw = cellW - pad * 2;
-        const sh = cellH - pad * 2;
-        const r = Math.min(sw, sh) * 0.4;
-        if (i === 0) {
-          // Head — slightly larger
-          ctx.fillStyle = sn.color;
-          ctx.beginPath();
-          ctx.roundRect(sx - 1, sy - 1, sw + 2, sh + 2, r + 1);
-          ctx.fill();
-          // Eyes
-          ctx.fillStyle = '#fff';
-          const eyeR = Math.max(2, sw * 0.18);
-          const dirs = { right: [0.65, 0.3], left: [0.35, 0.3], up: [0.3, 0.35], down: [0.7, 0.65] };
-          // Default eye positions (for right)
-          let e1x = 0.65, e1y = 0.3, e2x = 0.65, e2y = 0.7;
-          if (body.length > 1) {
-            const dx = body[0].x - body[1].x, dy = body[0].y - body[1].y;
-            e1x = 0.5 + dx * 0.18; e1y = 0.5 + dy * 0.18 + (dx !== 0 ? -0.18 : 0);
-            e2x = 0.5 + dx * 0.18; e2y = 0.5 + dy * 0.18 + (dx !== 0 ? 0.18 : 0);
-          }
-          ctx.beginPath(); ctx.arc(sx + sw * e1x, sy + sh * e1y, eyeR, 0, Math.PI * 2); ctx.fill();
-          ctx.beginPath(); ctx.arc(sx + sw * e2x, sy + sh * e2y, eyeR, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#111';
-          const pr = eyeR * 0.55;
-          ctx.beginPath(); ctx.arc(sx + sw * e1x, sy + sh * e1y, pr, 0, Math.PI * 2); ctx.fill();
-          ctx.beginPath(); ctx.arc(sx + sw * e2x, sy + sh * e2y, pr, 0, Math.PI * 2); ctx.fill();
-        } else {
-          const alpha = 1 - i / body.length * 0.5;
-          ctx.globalAlpha = alpha;
-          ctx.beginPath();
-          ctx.roundRect(sx, sy, sw, sh, r);
-          ctx.fill();
-          ctx.globalAlpha = 1;
-        }
-      }
-      ctx.shadowBlur = 0;
+    // Pause overlay
+    if (state === 'paused') {
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#4ecca3';
+      ctx.font = 'bold 36px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('暂停', w / 2, h / 2);
+      ctx.fillStyle = '#8aaccc';
+      ctx.font = '16px sans-serif';
+      ctx.fillText('按空格键继续', w / 2, h / 2 + 30);
     }
   }
 
@@ -435,7 +570,6 @@
 
   relayout();
   render();
-  setInterval(relayout, 2000);
 })();
 </script>
 </body>
