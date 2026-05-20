@@ -237,12 +237,7 @@ io.on('connection', (socket) => {
 });
 
 // ===== 加载游戏模块 =====
-const tetris = require('./tetris');
-const snake = require('./snake');
 const whiteboard = require('./whiteboard');
-
-tetris.init(io, account);
-snake.init(io, account);
 whiteboard.init(io, account);
 
 // ===== 系统状态 =====
@@ -266,9 +261,7 @@ setInterval(() => {
 function buildStatus() {
   const totalMem = os.totalmem(), freeMem = os.freemem();
   const memUsed = process.memoryUsage();
-  const tetrisData = tetris.tUsers ? { online: tetris.tUsers.size, rooms: tetris.tRooms.size, gamesActive: [...tetris.tGames.values()].filter(g => g.active).length } : { online: 0, rooms: 0, gamesActive: 0 };
   const whiteboardData = whiteboard.wbUsers ? { online: whiteboard.wbUsers.length, strokes: whiteboard.wbStrokes.length } : { online: 0, strokes: 0 };
-  const snakeData = snake.snakes ? { online: [...snake.snakes.values()].filter(s => s.alive).length, total: snake.snakes.size, food: snake.snFood.length } : { online: 0, total: 0, food: 0 };
 
   return {
     system: {
@@ -287,9 +280,7 @@ function buildStatus() {
     },
     services: {
       chat: { online: onlineUsers.size, messages: messages.length },
-      tetris: tetrisData,
-      whiteboard: whiteboardData,
-      snake: snakeData
+      whiteboard: whiteboardData
     },
     time: Date.now()
   };
