@@ -236,7 +236,7 @@ function init(io, accountModule) {
     console.log(`[SN+] ${sock.id}`);
     snSockets.set(sock.id, sock);
     const color = SN_COLORS[snColorIdx++ % SN_COLORS.length];
-    const sn = { id: sock.id, name: '', color, body: [], dir: 'right', nextDir: null, alive: false, grow: 0, score: 0, deadUntil: 0, token: sock.userToken };
+    const sn = { id: sock.id, name: '', color, body: [], dir: 'right', nextDir: null, alive: false, grow: 0, score: 0, deadUntil: 0, userToken: sock.userToken };
     snakes.set(sock.id, sn);
 
     sock.on('join', (data = {}) => {
@@ -290,6 +290,8 @@ function init(io, accountModule) {
       if (s && s.userToken) {
         snakes.delete(sock.id);
         snSockets.delete(sock.id);
+        const existing = snDisconnected.get(s.userToken);
+        if (existing) clearTimeout(existing.timeout);
         const snakeCopy = { ...s };
         const timeout = setTimeout(() => {
           snDisconnected.delete(s.userToken);

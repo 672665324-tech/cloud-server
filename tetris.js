@@ -126,6 +126,7 @@ function init(io, accountModule) {
 
     sock.on('spectate-room', (roomId) => {
       const r = tRooms.get(roomId); if (!r) return;
+      sock._hb = Date.now();
       if (!r.players.includes(sock.id) && !r.spectators.includes(sock.id)) { r.spectators.push(sock.id); sock.join(roomId); sendSpecState(sock, r); }
       broadcastRoom(r);
     });
