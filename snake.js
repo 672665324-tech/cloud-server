@@ -191,7 +191,13 @@ function init(io, accountModule) {
       for (const [, entries] of occ) {
         if (entries.length < 2) continue;
         const heads = entries.filter(e => e.isHead);
-        if (heads.length > 0) for (const h of heads) toKill.add(h.sid);
+        if (heads.length >= 2) {
+          // Head-on-head collision: kill all heads involved
+          for (const h of heads) toKill.add(h.sid);
+        } else if (heads.length === 1) {
+          // Head hit body: only kill the snake whose head it is
+          toKill.add(heads[0].sid);
+        }
       }
       for (const [sid, sn] of snakes) {
         if (!sn.alive || toKill.has(sid)) continue;
@@ -254,10 +260,9 @@ function init(io, accountModule) {
         snakes.delete(sock.id);
         const restoredSnake = dcEntry.snake;
         restoredSnake.id = sock.id;
-        restoredSnake.token = token;
+        restoredSnake.userToken = token;
         snakes.set(sock.id, restoredSnake);
         snSockets.set(sock.id, sock);
-        sn.name = restoredSnake.name;
         startSnakeTick();
         snBroadcast();
       } else {
@@ -282,15 +287,15 @@ function init(io, accountModule) {
       console.log(`[SN-] ${sock.id}`);
       const s = snakes.get(sock.id);
       if (s && s.alive) snDropFood(s.body, Math.min(3, s.body.length));
-      if (s && s.token) {
+      if (s && s.userToken) {
         snakes.delete(sock.id);
         snSockets.delete(sock.id);
         const snakeCopy = { ...s };
         const timeout = setTimeout(() => {
-          snDisconnected.delete(s.token);
+          snDisconnected.delete(s.userToken);
           snBroadcast();
         }, 30000);
-        snDisconnected.set(s.token, { snake: snakeCopy, timeout, name: s.name });
+        snDisconnected.set(s.userToken, { snake: snakeCopy, timeout, name: s.name });
       } else {
         snakes.delete(sock.id);
         snSockets.delete(sock.id);
